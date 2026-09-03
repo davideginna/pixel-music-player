@@ -84,8 +84,8 @@ Appena inviato il codice, la **GitHub Action partirà automaticamente** e compil
 Se preferisci compilare l'APK localmente sulla tua macchina tramite **Android Studio** o riga di comando:
 
 ### Prerequisiti
-- **Node.js** (v18 o superiore)
-- **Java JDK 17**
+- **Node.js** (v20 o superiore)
+- **Java JDK 21**
 - **Android Studio** (con Android SDK Platform 34+ installato)
 
 ### Passaggi:

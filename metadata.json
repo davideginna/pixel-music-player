@@ -1,0 +1,6 @@
+{
+  "name": "Pixel Music Player",
+  "description": "App Android per la riproduzione di musica locale con Material You, Dynamic Color ed esperienza Google Pixel.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

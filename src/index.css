@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  }
+}
+
+/* Custom minimal Material 3 scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(150, 150, 150, 0.25);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(150, 150, 150, 0.45);
+}
+
+/* Wave progress animation */
+@keyframes wave-pulse {
+  0%, 100% {
+    transform: scaleY(0.4);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.animate-wave-1 {
+  animation: wave-pulse 1.2s ease-in-out infinite;
+}
+.animate-wave-2 {
+  animation: wave-pulse 1.2s ease-in-out infinite 0.2s;
+}
+.animate-wave-3 {
+  animation: wave-pulse 1.2s ease-in-out infinite 0.4s;
+}
+.animate-wave-4 {
+  animation: wave-pulse 1.2s ease-in-out infinite 0.6s;
+}

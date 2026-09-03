@@ -31,21 +31,20 @@
 
 ---
 
-## 🚀 Pipeline GitHub Actions (Download APK)
+## 🚀 Download Diretto APK (GitHub Releases)
 
-Questo repository include una **pipeline CI/CD automatizzata** pronta all'uso (`.github/workflows/build-apk.yml`).
+La pipeline GitHub Actions ora pubblica automaticamente l'APK nella sezione **Releases** del repository ad ogni build.
 
-### Come scaricare l'APK compilato da GitHub:
+### 📲 Come scaricare l'APK direttamente dal telefono o PC:
 
-1. Pubblica il repository sul tuo account GitHub (vedi la guida sotto).
-2. Vai nella scheda **Actions** del tuo repository su GitHub.
-3. Seleziona la workflow **"Build & Release Android APK"**.
-4. Clicca sull'ultima esecuzione completata con successo (spunta verde).
-5. In fondo alla pagina, nella sezione **Artifacts**, troverai il file:
-   👉 **`pixel-music-player-debug-apk`** (un file `.zip` contenente l'APK pronto per l'installazione).
-6. Scaricalo, estrailo e trasferisci `app-debug.apk` sul tuo smartphone Android!
+1. Nel tuo repository su GitHub, vai nella barra laterale destra e tocca **Releases** (oppure vai all'URL `https://github.com/TUO-USERNAME/pixel-music-player/releases`).
+2. Troverai la release **Pixel Music Player (Latest Build)**.
+3. Nella sezione **Assets**, tocca direttamente:
+   👉 **`PixelMusicPlayer.apk`**
+4. Il download del file `.apk` partirà all'istante senza bisogno di estrarre file zip!
+5. Aprilo e tocca **Installa**.
 
-> 💡 **Suggerimento Release**: Se crei un tag (ad esempio `v1.1.0`), la pipeline creerà in automatico una vera **GitHub Release** allegando l'APK pronto per il download pubblico.
+*(È comunque sempre disponibile anche l'Artifact ZIP nella scheda Actions per gli sviluppatori).*
 
 ---
 

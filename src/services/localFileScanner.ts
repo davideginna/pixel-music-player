@@ -5,7 +5,16 @@ export async function parseAudioFile(file: File, folderName = 'Musica Locale'): 
   const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
   let title = fileNameWithoutExt;
   let artist = 'Artista sconosciuto';
-  let album = folderName || 'Album sconosciuto';
+
+  let computedFolder = folderName;
+  if (file.webkitRelativePath && file.webkitRelativePath.includes('/')) {
+    const parts = file.webkitRelativePath.split('/');
+    if (parts.length > 1 && parts[0]) {
+      computedFolder = parts[0];
+    }
+  }
+
+  let album = computedFolder || 'Album sconosciuto';
 
   // Check if filename is "Artist - Title"
   if (fileNameWithoutExt.includes(' - ')) {
@@ -42,8 +51,8 @@ export async function parseAudioFile(file: File, folderName = 'Musica Locale'): 
     coverUrl,
     audioUrl: objectUrl,
     audioBlob: file,
-    filePath: `local://${folderName}/${file.name}`,
-    folderName,
+    filePath: `local://${computedFolder}/${file.name}`,
+    folderName: computedFolder,
     fileSize: `${fileSizeMb} MB`,
     format: `${ext} • Locale`,
     bitrate: '320 kbps',

@@ -13,6 +13,8 @@ class AudioEngine {
   private synthInterval: number | null = null;
   private isSynthPlaying = false;
   private isInitialized = false;
+  private currentActiveTrack: Track | null = null;
+  private lastPositionUpdateTime = 0;
 
   private onTimeUpdateCallback: ((time: number, duration: number) => void) | null = null;
   private onEndedCallback: (() => void) | null = null;
@@ -20,7 +22,65 @@ class AudioEngine {
   private onTrackChangeRequest: ((direction: 'next' | 'prev') => void) | null = null;
 
   constructor() {
-    // Lazy initialize on user gesture
+    this.initMediaSessionHandlers();
+  }
+
+  public initMediaSessionHandlers() {
+    if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return;
+
+    try {
+      navigator.mediaSession.setActionHandler('play', () => {
+        if (this.onPlayPauseCallback) this.onPlayPauseCallback(true);
+        this.togglePlay(false, this.currentActiveTrack || undefined);
+      });
+    } catch { /* unsupported */ }
+
+    try {
+      navigator.mediaSession.setActionHandler('pause', () => {
+        if (this.onPlayPauseCallback) this.onPlayPauseCallback(false);
+        this.pause();
+      });
+    } catch { /* unsupported */ }
+
+    try {
+      navigator.mediaSession.setActionHandler('previoustrack', () => {
+        if (this.onTrackChangeRequest) this.onTrackChangeRequest('prev');
+      });
+    } catch { /* unsupported */ }
+
+    try {
+      navigator.mediaSession.setActionHandler('nexttrack', () => {
+        if (this.onTrackChangeRequest) this.onTrackChangeRequest('next');
+      });
+    } catch { /* unsupported */ }
+
+    try {
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (details.seekTime !== undefined) {
+          this.seek(details.seekTime);
+        }
+      });
+    } catch { /* unsupported */ }
+
+    try {
+      navigator.mediaSession.setActionHandler('seekforward', (details) => {
+        const offset = (details && details.seekOffset) || 10;
+        if (this.audio) this.seek(this.audio.currentTime + offset);
+      });
+    } catch { /* unsupported */ }
+
+    try {
+      navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+        const offset = (details && details.seekOffset) || 10;
+        if (this.audio) this.seek(Math.max(0, this.audio.currentTime - offset));
+      });
+    } catch { /* unsupported */ }
+
+    try {
+      navigator.mediaSession.setActionHandler('stop', () => {
+        this.pause();
+      });
+    } catch { /* unsupported */ }
   }
 
   private initAudioContext() {
@@ -32,7 +92,9 @@ class AudioEngine {
 
       this.audio = new Audio();
       this.audio.crossOrigin = 'anonymous';
-      this.audio.preload = 'metadata';
+      this.audio.preload = 'auto';
+      this.audio.setAttribute('playsinline', 'true');
+      this.audio.setAttribute('webkit-playsinline', 'true');
 
       this.audio.addEventListener('timeupdate', () => {
         if (this.audio && this.onTimeUpdateCallback) {
@@ -127,6 +189,7 @@ class AudioEngine {
   }
 
   public async playTrack(track: Track, startTime = 0) {
+    this.currentActiveTrack = track;
     this.initAudioContext();
     if (this.audioCtx && this.audioCtx.state === 'suspended') {
       await this.audioCtx.resume();
@@ -153,7 +216,42 @@ class AudioEngine {
     this.setupMediaSession(track);
   }
 
+  public pause() {
+    if (this.isSynthPlaying) {
+      this.stopSynth();
+      if (this.onPlayPauseCallback) this.onPlayPauseCallback(false);
+      this.updateMediaSessionPlaybackState('paused');
+      return;
+    }
+    if (this.audio && !this.audio.paused) {
+      this.audio.pause();
+      if (this.onPlayPauseCallback) this.onPlayPauseCallback(false);
+      this.updateMediaSessionPlaybackState('paused');
+    }
+  }
+
+  public async resume() {
+    if (this.isSynthPlaying && this.currentActiveTrack) {
+      this.startProceduralSynth(this.currentActiveTrack);
+      if (this.onPlayPauseCallback) this.onPlayPauseCallback(true);
+      this.updateMediaSessionPlaybackState('playing');
+      return;
+    }
+    if (this.audio && this.audio.paused) {
+      try {
+        await this.audio.play();
+        if (this.onPlayPauseCallback) this.onPlayPauseCallback(true);
+        this.updateMediaSessionPlaybackState('playing');
+      } catch {
+        if (this.currentActiveTrack) this.startProceduralSynth(this.currentActiveTrack);
+      }
+    }
+  }
+
   public async togglePlay(isPlaying: boolean, currentTrack?: Track) {
+    if (currentTrack) {
+      this.currentActiveTrack = currentTrack;
+    }
     this.initAudioContext();
     if (this.audioCtx && this.audioCtx.state === 'suspended') {
       await this.audioCtx.resume();
@@ -163,9 +261,11 @@ class AudioEngine {
       if (isPlaying) {
         this.stopSynth();
         if (this.onPlayPauseCallback) this.onPlayPauseCallback(false);
-      } else if (currentTrack) {
-        this.startProceduralSynth(currentTrack);
+        this.updateMediaSessionPlaybackState('paused');
+      } else if (this.currentActiveTrack) {
+        this.startProceduralSynth(this.currentActiveTrack);
         if (this.onPlayPauseCallback) this.onPlayPauseCallback(true);
+        this.updateMediaSessionPlaybackState('playing');
       }
       return;
     }
@@ -175,11 +275,16 @@ class AudioEngine {
     if (this.audio.paused) {
       try {
         await this.audio.play();
+        this.updateMediaSessionPlaybackState('playing');
       } catch {
-        if (currentTrack) this.startProceduralSynth(currentTrack);
+        if (this.currentActiveTrack) {
+          this.startProceduralSynth(this.currentActiveTrack);
+          this.updateMediaSessionPlaybackState('playing');
+        }
       }
     } else {
       this.audio.pause();
+      this.updateMediaSessionPlaybackState('paused');
     }
   }
 
@@ -219,48 +324,114 @@ class AudioEngine {
     return dataArray;
   }
 
+  private async getRasterArtwork(track: Track): Promise<string> {
+    if (typeof document === 'undefined') return track.coverUrl;
+
+    // If already raster image (png, jpg, webp)
+    if (
+      track.coverUrl.startsWith('http') &&
+      !track.coverUrl.includes('.svg')
+    ) {
+      return track.coverUrl;
+    }
+    if (
+      track.coverUrl.startsWith('data:image/') &&
+      !track.coverUrl.startsWith('data:image/svg')
+    ) {
+      return track.coverUrl;
+    }
+
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return track.coverUrl;
+
+      // Draw high-resolution Material You gradient background
+      const grad = ctx.createLinearGradient(0, 0, 512, 512);
+      grad.addColorStop(0, '#1E3A8A');
+      grad.addColorStop(0.5, '#4338CA');
+      grad.addColorStop(1, '#831843');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 512, 512);
+
+      // Vinyl ring
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.arc(256, 230, 120, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(256, 230, 36, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+      ctx.fill();
+
+      // Title & Artist
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 28px -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(track.title.slice(0, 26), 256, 405);
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.font = '20px -apple-system, sans-serif';
+      ctx.fillText(track.artist.slice(0, 30), 256, 440);
+
+      // Render vector SVG image on top if valid
+      if (track.coverUrl.startsWith('data:image/svg') || track.coverUrl.includes('.svg')) {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        await new Promise<void>((resolve) => {
+          img.onload = () => {
+            try {
+              ctx.drawImage(img, 0, 0, 512, 512);
+            } catch {
+              // keep canvas graphics
+            }
+            resolve();
+          };
+          img.onerror = () => resolve();
+          img.src = track.coverUrl;
+          setTimeout(resolve, 250);
+        });
+      }
+
+      return canvas.toDataURL('image/png');
+    } catch {
+      return track.coverUrl;
+    }
+  }
+
   private async setupMediaSession(track: Track) {
     if ('mediaSession' in navigator) {
-      let pngArtwork = track.coverUrl;
-      try {
-        if (track.coverUrl.startsWith('data:image/svg') && typeof document !== 'undefined') {
-          const canvas = document.createElement('canvas');
-          canvas.width = 512;
-          canvas.height = 512;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            const img = new Image();
-            await new Promise<void>((resolve) => {
-              img.onload = () => {
-                ctx.drawImage(img, 0, 0, 512, 512);
-                pngArtwork = canvas.toDataURL('image/png');
-                resolve();
-              };
-              img.onerror = () => resolve();
-              img.src = track.coverUrl;
-            });
-          }
-        }
-      } catch {
-        // Fallback to original
-      }
+      const rasterArtwork = await this.getRasterArtwork(track);
 
       navigator.mediaSession.metadata = new MediaMetadata({
         title: track.title,
         artist: track.artist,
-        album: track.album,
+        album: track.album || 'Pixel Music',
         artwork: [
-          { src: pngArtwork, sizes: '512x512', type: 'image/png' },
-          { src: pngArtwork, sizes: '256x256', type: 'image/png' },
-          { src: pngArtwork, sizes: '128x128', type: 'image/png' },
+          { src: rasterArtwork, sizes: '96x96', type: 'image/png' },
+          { src: rasterArtwork, sizes: '128x128', type: 'image/png' },
+          { src: rasterArtwork, sizes: '192x192', type: 'image/png' },
+          { src: rasterArtwork, sizes: '256x256', type: 'image/png' },
+          { src: rasterArtwork, sizes: '384x384', type: 'image/png' },
+          { src: rasterArtwork, sizes: '512x512', type: 'image/png' },
         ],
       });
 
-      navigator.mediaSession.setActionHandler('play', () => {
-        this.togglePlay(false, track);
+      navigator.mediaSession.playbackState = 'playing';
+
+      navigator.mediaSession.setActionHandler('play', async () => {
+        await this.resume();
+        this.updateMediaSessionPlaybackState('playing');
+        if (this.onPlayPauseCallback) this.onPlayPauseCallback(true);
       });
       navigator.mediaSession.setActionHandler('pause', () => {
-        this.togglePlay(true, track);
+        this.pause();
+        this.updateMediaSessionPlaybackState('paused');
+        if (this.onPlayPauseCallback) this.onPlayPauseCallback(false);
       });
       navigator.mediaSession.setActionHandler('previoustrack', () => {
         if (this.onTrackChangeRequest) this.onTrackChangeRequest('prev');
@@ -281,6 +452,7 @@ class AudioEngine {
       });
       navigator.mediaSession.setActionHandler('stop', () => {
         this.pause();
+        this.updateMediaSessionPlaybackState('paused');
       });
     }
   }
@@ -288,10 +460,12 @@ class AudioEngine {
   public updateMediaSessionPosition(position: number, duration: number) {
     if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession && duration > 0) {
       try {
+        const cleanDur = Math.max(1, Number(duration.toFixed(2)));
+        const cleanPos = Math.min(cleanDur, Math.max(0, Number(position.toFixed(2))));
         navigator.mediaSession.setPositionState({
-          duration: Math.max(1, Math.round(duration)),
+          duration: cleanDur,
           playbackRate: 1,
-          position: Math.min(Math.max(0, Math.round(position)), Math.max(1, Math.round(duration))),
+          position: cleanPos,
         });
       } catch {
         // Ignore if state cannot be set
@@ -390,15 +564,6 @@ class AudioEngine {
     if (this.audio && this.audio.src.startsWith('data:audio/wav')) {
       this.audio.pause();
     }
-  }
-
-  public pause() {
-    this.stopSynth();
-    if (this.audio && !this.audio.paused) {
-      this.audio.pause();
-    }
-    this.updateMediaSessionPlaybackState('paused');
-    if (this.onPlayPauseCallback) this.onPlayPauseCallback(false);
   }
 
   public destroy() {

@@ -31,9 +31,8 @@ export const AndroidStatusBar: React.FC<AndroidStatusBarProps> = ({
     <header
       id="pixel-status-bar"
       onClick={onOpenNotificationPanel}
-      className="w-full h-8 px-6 pt-2 pb-1 flex items-center justify-between text-xs font-semibold select-none z-30 cursor-pointer transition-colors duration-300"
+      className="w-full h-8 px-6 pt-2 pb-1 flex items-center justify-between text-xs font-semibold select-none z-30 transition-colors duration-300"
       style={{ color: palette.onSurface }}
-      title="Tocca per visualizzare la notifica multimediale Android 13+"
     >
       {/* Left: Time & notification icons */}
       <div className="flex items-center gap-2">

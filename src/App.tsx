@@ -21,7 +21,6 @@ import { INITIAL_TRACKS } from './services/sampleLibrary';
 
 import { AndroidStatusBar } from './components/AndroidStatusBar';
 import { AndroidGestureBar } from './components/AndroidGestureBar';
-import { AndroidLockscreenModal } from './components/AndroidLockscreenModal';
 import { NavigationBar } from './components/NavigationBar';
 import { MiniPlayer } from './components/MiniPlayer';
 import { FullPlayerModal } from './components/FullPlayerModal';
@@ -81,7 +80,6 @@ export default function App() {
 
   // Modals & Drawers
   const [isFullPlayerOpen, setIsFullPlayerOpen] = useState(false);
-  const [isLockscreenOpen, setIsLockscreenOpen] = useState(false);
   const [isFolderScannerOpen, setIsFolderScannerOpen] = useState(false);
   const [playlistModalTarget, setPlaylistModalTarget] = useState<Playlist | null>(null);
   const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
@@ -548,7 +546,6 @@ export default function App() {
       <AndroidStatusBar
         palette={activePalette}
         isPlaying={isPlaying}
-        onOpenNotificationPanel={() => setIsLockscreenOpen(true)}
       />
 
       {/* Main Tab View */}
@@ -622,7 +619,6 @@ export default function App() {
             onToggleHaptics={() => setHapticsEnabled(!hapticsEnabled)}
             onOpenEqualizer={() => setIsFullPlayerOpen(true)}
             onOpenFolderScanner={() => setIsFolderScannerOpen(true)}
-            onOpenLockscreenPreview={() => setIsLockscreenOpen(true)}
             onResetLibrary={() => setIsResetConfirmOpen(true)}
           />
         )}
@@ -707,23 +703,7 @@ export default function App() {
         onChangeAudioOutputRoute={setAudioOutputRoute}
       />
 
-      {/* 2. Android Lockscreen & Media Notification Preview */}
-      <AndroidLockscreenModal
-        isOpen={isLockscreenOpen}
-        onClose={() => setIsLockscreenOpen(false)}
-        currentTrack={currentTrack}
-        isPlaying={isPlaying}
-        currentTime={currentTime}
-        duration={duration}
-        palette={activePalette}
-        onTogglePlay={handleTogglePlay}
-        onNext={handleNextTrack}
-        onPrev={handlePrevTrack}
-        onSeek={handleSeek}
-        onToggleFavorite={handleToggleFavorite}
-      />
-
-      {/* 3. Folder Scanner & Import Modal */}
+      {/* 2. Folder Scanner & Import Modal */}
       <FolderScannerModal
         isOpen={isFolderScannerOpen}
         onClose={() => setIsFolderScannerOpen(false)}

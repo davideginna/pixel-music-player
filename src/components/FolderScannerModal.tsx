@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, FolderOpen, UploadCloud, CheckCircle2, Music, Sparkles } from 'lucide-react';
+import { X, CheckCircle2, Music, Files, Monitor, Sparkles, AudioLines } from 'lucide-react';
 import { DynamicPalette, Track } from '../types';
 import { parseAudioFile } from '../services/localFileScanner';
 
@@ -20,14 +20,17 @@ export const FolderScannerModal: React.FC<FolderScannerModalProps> = ({
   const [isScanning, setIsScanning] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const [importedCount, setImportedCount] = useState<number | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const dirInputRef = useRef<HTMLInputElement>(null);
+
+  // Separate refs for single file and multi-file selection to guarantee 100% reliability on mobile
+  const singleFileInputRef = useRef<HTMLInputElement>(null);
+  const multiFileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
-  const handleFiles = async (files: FileList | File[], folderName = 'Musica Locale') => {
+  const handleFiles = async (files: FileList | File[], defaultCategory = 'Memoria Telefono') => {
+    if (!files || files.length === 0) return;
     setIsScanning(true);
-    setStatusMessage('Analisi dei file audio e metadati in corso...');
+    setStatusMessage('Analisi del file audio e lettura dei metadati...');
     const newTracks: Track[] = [];
 
     const audioExtensions = ['.mp3', '.flac', '.wav', '.m4a', '.aac', '.ogg', '.opus'];
@@ -35,11 +38,14 @@ export const FolderScannerModal: React.FC<FolderScannerModalProps> = ({
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const name = file.name.toLowerCase();
-      const isAudio = audioExtensions.some((ext) => name.endsWith(ext)) || file.type.startsWith('audio/');
+      const isAudio =
+        audioExtensions.some((ext) => name.endsWith(ext)) ||
+        file.type.startsWith('audio/') ||
+        file.type === '';
 
       if (isAudio) {
-        setStatusMessage(`Elaborazione: ${file.name}`);
-        const track = await parseAudioFile(file, folderName);
+        setStatusMessage(`Lettura: ${file.name}`);
+        const track = await parseAudioFile(file, defaultCategory);
         newTracks.push(track);
       }
     }
@@ -53,73 +59,65 @@ export const FolderScannerModal: React.FC<FolderScannerModalProps> = ({
     }
   };
 
-  // Handle picking directory or files
-  const handlePickDirectory = async () => {
-    // If desktop Chromium with showDirectoryPicker
-    if ('showDirectoryPicker' in window && !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-      try {
-        setIsScanning(true);
-        setStatusMessage('Accesso alla cartella autorizzato...');
-        const win = window as unknown as { showDirectoryPicker: () => Promise<FileSystemDirectoryHandle> };
-        const dirHandle = await win.showDirectoryPicker();
-        const collectedFiles: File[] = [];
+  // Optional desktop directory picker for users testing on desktop PC
+  const isDesktopChromium =
+    typeof window !== 'undefined' &&
+    'showDirectoryPicker' in window &&
+    !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-        // Iterate directory entries
-        for await (const entry of (dirHandle as unknown as { values: () => AsyncIterable<FileSystemHandle> }).values()) {
-          if (entry.kind === 'file') {
-            const file = await (entry as FileSystemFileHandle).getFile();
-            collectedFiles.push(file);
-          }
-        }
+  const handlePickDesktopDirectory = async () => {
+    try {
+      setIsScanning(true);
+      setStatusMessage('Accesso alla cartella autorizzato...');
+      const win = window as unknown as { showDirectoryPicker: () => Promise<FileSystemDirectoryHandle> };
+      const dirHandle = await win.showDirectoryPicker();
+      const collectedFiles: File[] = [];
 
-        await handleFiles(collectedFiles, dirHandle.name);
-      } catch (err: unknown) {
-        setIsScanning(false);
-        if ((err as Error)?.name !== 'AbortError') {
-          // Fallback to standard multi-file picker
-          fileInputRef.current?.click();
+      for await (const entry of (dirHandle as unknown as { values: () => AsyncIterable<FileSystemHandle> }).values()) {
+        if (entry.kind === 'file') {
+          const file = await (entry as FileSystemFileHandle).getFile();
+          collectedFiles.push(file);
         }
       }
-    } else {
-      // Android / mobile: trigger native multi-audio picker directly
-      fileInputRef.current?.click();
-    }
-  };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFiles(e.dataTransfer.files, 'File Trascinati');
+      await handleFiles(collectedFiles, dirHandle.name);
+    } catch (err: unknown) {
+      setIsScanning(false);
+      if ((err as Error)?.name !== 'AbortError') {
+        setStatusMessage('Impossibile accedere alla cartella selezionata.');
+      }
     }
   };
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-sm">
+      <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/65 backdrop-blur-sm">
         <motion.div
           initial={{ y: '100%' }}
           animate={{ y: 0 }}
           exit={{ y: '100%' }}
           transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-          className="w-full max-h-[85vh] rounded-t-[32px] p-6 flex flex-col shadow-2xl select-none"
+          className="w-full max-h-[88vh] rounded-t-[32px] p-6 flex flex-col shadow-2xl select-none"
           style={{
             backgroundColor: palette.surfaceContainerHigh,
             color: palette.onSurface,
           }}
-          id="pixel-folder-scanner-modal"
+          id="pixel-audio-import-modal"
         >
-          {/* Header */}
+          {/* Header with Pixel Buds Icon & Close */}
           <div className="flex items-center justify-between pb-4 border-b border-black/10">
             <div className="flex items-center gap-3">
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: palette.primaryContainer, color: palette.onPrimaryContainer }}
-              >
-                <FolderOpen className="w-5 h-5" />
-              </div>
+              <img
+                src="/app-icon.svg"
+                alt="Pixel Music"
+                className="w-11 h-11 rounded-2xl shadow-sm border border-black/5"
+              />
               <div>
-                <h3 className="text-lg font-bold">Scansione Musica Locale</h3>
-                <p className="text-xs opacity-70">Android 13+ Storage Access Framework</p>
+                <h3 className="text-lg font-bold flex items-center gap-1.5">
+                  <span>Aggiungi Musica</span>
+                  <Sparkles className="w-4 h-4 text-amber-500" />
+                </h3>
+                <p className="text-xs opacity-70">Memoria locale dispositivo</p>
               </div>
             </div>
 
@@ -129,97 +127,128 @@ export const FolderScannerModal: React.FC<FolderScannerModalProps> = ({
                 setStatusMessage('');
                 onClose();
               }}
-              className="p-2 rounded-full hover:bg-black/10 transition"
+              className="p-2 rounded-full hover:bg-black/10 transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          <div className="py-5 space-y-4">
-            {/* Drag & Drop Target Area */}
+          <div className="py-5 space-y-3.5">
+            {/* Native Single Track Hidden Input */}
+            <input
+              type="file"
+              ref={singleFileInputRef}
+              accept="audio/*,.mp3,.flac,.wav,.m4a,.aac,.ogg,.opus"
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files) handleFiles(e.target.files, 'Brano Singolo');
+                e.target.value = '';
+              }}
+            />
+
+            {/* Native Multi-File Hidden Input */}
+            <input
+              type="file"
+              ref={multiFileInputRef}
+              multiple
+              accept="audio/*,.mp3,.flac,.wav,.m4a,.aac,.ogg,.opus"
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files) handleFiles(e.target.files, 'Musica Selezionata');
+                e.target.value = '';
+              }}
+            />
+
+            {/* ACTION CARD 1: Scegli Singolo Brano */}
             <div
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={handleDrop}
-              className="border-2 border-dashed rounded-3xl p-8 flex flex-col items-center justify-center text-center transition-all hover:border-current cursor-pointer"
-              style={{ borderColor: palette.primary }}
-              onClick={handlePickDirectory}
+              onClick={() => singleFileInputRef.current?.click()}
+              className="p-4 rounded-2xl flex items-center justify-between border border-black/10 cursor-pointer transition active:scale-[0.98] hover:shadow-md"
+              style={{
+                backgroundColor: palette.surfaceContainer,
+                borderColor: palette.primary,
+              }}
             >
-              <UploadCloud className="w-12 h-12 mb-3 opacity-80" style={{ color: palette.primary }} />
-              <h4 className="text-sm font-bold mb-1">
-                Seleziona cartella o trascina file audio qui
-              </h4>
-              <p className="text-xs opacity-70 max-w-xs">
-                Supporta file MP3, FLAC, WAV, M4A, AAC, OGG. Scansione rapida con generazione metadati.
-              </p>
+              <div className="flex items-center gap-3.5">
+                <div
+                  className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm"
+                  style={{
+                    backgroundColor: palette.primary,
+                    color: palette.onPrimary,
+                  }}
+                >
+                  <Music className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-sm font-bold">Scegli singolo brano</h4>
+                    <span
+                      className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full"
+                      style={{
+                        backgroundColor: palette.primaryContainer,
+                        color: palette.onPrimaryContainer,
+                      }}
+                    >
+                      Immediato
+                    </span>
+                  </div>
+                  <p className="text-xs opacity-75 mt-0.5">
+                    Seleziona 1 canzone (.mp3, .flac, .wav, .m4a, .aac)
+                  </p>
+                </div>
+              </div>
             </div>
 
-            {/* Hidden native inputs for maximum device compatibility */}
-            <input
-              type="file"
-              ref={fileInputRef}
-              multiple
-              accept="audio/*,.mp3,.flac,.wav,.m4a,.aac,.ogg"
-              className="hidden"
-              onChange={(e) => {
-                if (e.target.files) handleFiles(e.target.files);
+            {/* ACTION CARD 2: Scegli Più Brani (Selezione Multipla) */}
+            <div
+              onClick={() => multiFileInputRef.current?.click()}
+              className="p-4 rounded-2xl flex items-center justify-between border border-black/10 cursor-pointer transition active:scale-[0.98] hover:shadow-md"
+              style={{
+                backgroundColor: palette.surfaceContainer,
               }}
-            />
-            {/* Directory picker fallback */}
-            <input
-              type="file"
-              ref={dirInputRef}
-              {...({ webkitdirectory: '' } as React.InputHTMLAttributes<HTMLInputElement>)}
-              multiple
-              className="hidden"
-              onChange={(e) => {
-                if (e.target.files) handleFiles(e.target.files, 'Cartella Selezionata');
-              }}
-            />
+            >
+              <div className="flex items-center gap-3.5">
+                <div
+                  className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm"
+                  style={{
+                    backgroundColor: palette.secondaryContainer,
+                    color: palette.onSecondaryContainer,
+                  }}
+                >
+                  <Files className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold">Scegli più brani insieme</h4>
+                  <p className="text-xs opacity-75 mt-0.5">
+                    Selezione multipla dal gestore file di Android
+                  </p>
+                </div>
+              </div>
+            </div>
 
-            {/* Android specific help tip */}
+            {/* Desktop only folder option */}
+            {isDesktopChromium && (
+              <button
+                onClick={handlePickDesktopDirectory}
+                disabled={isScanning}
+                className="w-full py-3 px-4 rounded-2xl text-xs font-semibold flex items-center justify-center gap-2 border border-black/10 hover:bg-black/5 transition cursor-pointer"
+              >
+                <Monitor className="w-4 h-4 opacity-75" />
+                <span>Importa intera cartella da PC Desktop</span>
+              </button>
+            )}
+
+            {/* Android Usage Hint */}
             <div
               className="p-3.5 rounded-2xl text-xs flex items-start gap-2.5 border border-black/5"
               style={{ backgroundColor: palette.surfaceContainer, color: palette.onSurface }}
             >
-              <FolderOpen className="w-4 h-4 shrink-0 mt-0.5" style={{ color: palette.primary }} />
-              <div className="space-y-1">
-                <p className="font-bold">Come importare cartelle su Android:</p>
-                <p className="opacity-80 leading-relaxed text-[11px]">
-                  Tocca <strong>"Scegli cartella / brani"</strong>. Nel gestore file di sistema, naviga nella tua cartella musicale, tieni premuto un brano e tocca i tre puntini ⋮ &gt; <strong>"Seleziona tutto"</strong> per importare l'intero album o cartella.
-                </p>
-              </div>
+              <AudioLines className="w-4 h-4 shrink-0 mt-0.5" style={{ color: palette.primary }} />
+              <p className="opacity-80 leading-relaxed text-[11px]">
+                I brani importati rimangono salvati nella memoria del browser e possono essere riprodotti offline con controlli sulla schermata di blocco e via Bluetooth.
+              </p>
             </div>
 
-            {/* Action Buttons */}
-            <div className="grid grid-cols-2 gap-3 pt-1">
-              <button
-                onClick={handlePickDirectory}
-                disabled={isScanning}
-                className="py-3.5 px-4 rounded-2xl text-xs font-bold shadow-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50 cursor-pointer"
-                style={{
-                  backgroundColor: palette.primary,
-                  color: palette.onPrimary,
-                }}
-              >
-                <FolderOpen className="w-4 h-4 shrink-0" />
-                <span className="truncate">Scegli cartella / brani</span>
-              </button>
-
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isScanning}
-                className="py-3.5 px-4 rounded-2xl text-xs font-bold shadow-sm flex items-center justify-center gap-2 transition active:scale-95 border border-black/10 disabled:opacity-50 cursor-pointer"
-                style={{
-                  backgroundColor: palette.surfaceContainer,
-                  color: palette.onSurface,
-                }}
-              >
-                <Music className="w-4 h-4 shrink-0" />
-                <span className="truncate">Seleziona file</span>
-              </button>
-            </div>
-
-            {/* Progress / Status feedback */}
+            {/* Scanning progress spinner */}
             {isScanning && (
               <div className="p-4 rounded-2xl bg-black/5 flex items-center gap-3 text-xs">
                 <div className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin shrink-0" />
@@ -227,9 +256,10 @@ export const FolderScannerModal: React.FC<FolderScannerModalProps> = ({
               </div>
             )}
 
+            {/* Success notification */}
             {importedCount !== null && (
               <div
-                className="p-4 rounded-2xl flex items-center gap-3 text-xs"
+                className="p-4 rounded-2xl flex items-center gap-3 text-xs shadow-sm"
                 style={{
                   backgroundColor: palette.secondaryContainer,
                   color: palette.onSecondaryContainer,
@@ -237,7 +267,7 @@ export const FolderScannerModal: React.FC<FolderScannerModalProps> = ({
               >
                 <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
                 <span>
-                  Operazione completata: <strong>{importedCount}</strong> brani aggiunti alla tua libreria locale!
+                  Operazione completata: <strong>{importedCount}</strong> brani aggiunti alla tua libreria!
                 </span>
               </div>
             )}

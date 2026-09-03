@@ -90,15 +90,15 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
   const startPosRef = React.useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const didJustLongPressRef = React.useRef<boolean>(false);
 
-  const handlePointerDown = (track: Track, e: React.PointerEvent) => {
+  const startLongPress = (track: Track, clientX: number, clientY: number) => {
     if (isMultiSelectMode) return;
-    startPosRef.current = { x: e.clientX, y: e.clientY };
+    startPosRef.current = { x: clientX, y: clientY };
     didJustLongPressRef.current = false;
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
 
     longPressTimerRef.current = window.setTimeout(() => {
       didJustLongPressRef.current = true;
-      if (navigator.vibrate) {
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
         try {
           navigator.vibrate(40);
         } catch {
@@ -107,14 +107,14 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
       }
       setIsMultiSelectMode(true);
       setSelectedTrackIds(new Set([track.id]));
-    }, 450);
+    }, 380);
   };
 
-  const handlePointerMove = (e: React.PointerEvent) => {
+  const moveLongPress = (clientX: number, clientY: number) => {
     if (isMultiSelectMode) return;
-    const dx = Math.abs(e.clientX - startPosRef.current.x);
-    const dy = Math.abs(e.clientY - startPosRef.current.y);
-    if (dx > 8 || dy > 8) {
+    const dx = Math.abs(clientX - startPosRef.current.x);
+    const dy = Math.abs(clientY - startPosRef.current.y);
+    if (dx > 16 || dy > 16) {
       if (longPressTimerRef.current) {
         clearTimeout(longPressTimerRef.current);
         longPressTimerRef.current = null;
@@ -122,11 +122,39 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
     }
   };
 
-  const handlePointerUp = () => {
+  const cancelLongPress = () => {
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
+  };
+
+  const handlePointerDown = (track: Track, e: React.PointerEvent) => {
+    startLongPress(track, e.clientX, e.clientY);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    moveLongPress(e.clientX, e.clientY);
+  };
+
+  const handlePointerUp = () => {
+    cancelLongPress();
+  };
+
+  const handleTouchStart = (track: Track, e: React.TouchEvent) => {
+    if (e.touches.length > 0) {
+      startLongPress(track, e.touches[0].clientX, e.touches[0].clientY);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length > 0) {
+      moveLongPress(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    cancelLongPress();
   };
 
   const toggleTrackSelection = (trackId: string) => {
@@ -587,7 +615,16 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
 
       {/* VIEW: FOLDERS */}
       {subTab === 'folders' && !selectedFolder && (
-        <div className="space-y-2.5">
+        <div className="space-y-3">
+          <button
+            onClick={onOpenFolderScanner}
+            className="w-full flex items-center justify-center gap-2.5 p-4 rounded-2xl border-2 border-dashed border-current/20 font-bold text-xs hover:bg-black/5 transition cursor-pointer"
+            style={{ color: palette.primary }}
+          >
+            <FolderPlus className="w-4 h-4" />
+            <span>Aggiungi brani dal dispositivo (singolo o multipli)</span>
+          </button>
+
           {folders.map((folder) => (
             <div
               key={folder.name}
@@ -604,12 +641,53 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
                 </div>
                 <div>
                   <h4 className="text-sm font-bold">{folder.name}</h4>
-                  <p className="text-xs opacity-70">{folder.count} file audio</p>
+                  <p className="text-xs opacity-70">{folder.count} {folder.count === 1 ? 'file audio' : 'file audio'}</p>
                 </div>
               </div>
               <span className="text-xs font-semibold opacity-60">Apri →</span>
             </div>
           ))}
+
+          {folders.length === 0 && (
+            <div className="text-center py-10 text-xs opacity-60">
+              Nessuna cartella trovata. Tocca il pulsante in alto per importare una cartella di brani dal tuo telefono.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* FOLDER DRILL-DOWN HEADER */}
+      {subTab === 'folders' && selectedFolder && (
+        <div
+          className="mb-3.5 p-4 rounded-2xl flex items-center justify-between border border-black/5"
+          style={{ backgroundColor: palette.surfaceContainer }}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{ backgroundColor: palette.primaryContainer, color: palette.onPrimaryContainer }}
+            >
+              <Folder className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold truncate max-w-[170px] sm:max-w-xs">{selectedFolder}</h3>
+              <p className="text-xs opacity-70">{filteredSortedTracks.length} {filteredSortedTracks.length === 1 ? 'brano' : 'brani'}</p>
+            </div>
+          </div>
+
+          {filteredSortedTracks.length > 0 && (
+            <button
+              onClick={() => {
+                onSelectTrack(filteredSortedTracks[0]);
+                if (onAddTracksToQueue) onAddTracksToQueue(filteredSortedTracks);
+              }}
+              className="px-3.5 py-2 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer"
+              style={{ backgroundColor: palette.primary, color: palette.onPrimary }}
+            >
+              <Play className="w-3.5 h-3.5 fill-current" />
+              <span>Riproduci tutti</span>
+            </button>
+          )}
         </div>
       )}
 
@@ -628,8 +706,15 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
                     onPointerMove={handlePointerMove}
                     onPointerUp={handlePointerUp}
                     onPointerCancel={handlePointerUp}
+                    onTouchStart={(e) => handleTouchStart(track, e)}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                    onTouchCancel={handleTouchEnd}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                    }}
                     onClick={() => handleTrackClick(track)}
-                    className={`p-3 rounded-2xl flex flex-col cursor-pointer transition-all hover:shadow-sm border active:scale-95 relative ${
+                    className={`p-3 rounded-2xl flex flex-col cursor-pointer transition-all hover:shadow-sm border active:scale-95 relative select-none ${
                       isSelected
                         ? 'ring-2 ring-offset-2'
                         : 'border-black/5'
@@ -703,8 +788,15 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
                     onPointerMove={handlePointerMove}
                     onPointerUp={handlePointerUp}
                     onPointerCancel={handlePointerUp}
+                    onTouchStart={(e) => handleTouchStart(track, e)}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                    onTouchCancel={handleTouchEnd}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                    }}
                     onClick={() => handleTrackClick(track)}
-                    className={`flex items-center gap-3 p-2.5 rounded-2xl cursor-pointer transition-all border ${
+                    className={`flex items-center gap-3 p-2.5 rounded-2xl cursor-pointer transition-all border select-none ${
                       isSelected
                         ? 'ring-2 ring-offset-1 font-bold shadow-sm'
                         : isCurrent
@@ -900,6 +992,115 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Material You Multi-Select Bottom Action Bar */}
+      <AnimatePresence>
+        {isMultiSelectMode && (
+          <motion.div
+            initial={{ opacity: 0, y: 40, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 30, scale: 0.95 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+            className="fixed bottom-20 sm:bottom-24 left-1/2 -translate-x-1/2 z-40 w-[94%] max-w-md rounded-3xl p-3 shadow-2xl border border-black/10 backdrop-blur-xl flex items-center justify-between gap-2 select-none"
+            style={{
+              backgroundColor: palette.surfaceContainerHigh,
+              color: palette.onSurface,
+            }}
+            id="pixel-multi-select-bar"
+          >
+            <div className="flex items-center gap-2 pl-2">
+              <span className="text-xs font-bold whitespace-nowrap">
+                {selectedTrackIds.size} {selectedTrackIds.size === 1 ? 'selezionato' : 'selezionati'}
+              </span>
+              <button
+                onClick={() => {
+                  if (selectedTrackIds.size === filteredSortedTracks.length) {
+                    setSelectedTrackIds(new Set());
+                  } else {
+                    setSelectedTrackIds(new Set(filteredSortedTracks.map((t) => t.id)));
+                  }
+                }}
+                className="text-[11px] font-semibold opacity-70 hover:opacity-100 underline cursor-pointer"
+              >
+                {selectedTrackIds.size === filteredSortedTracks.length ? 'Deseleziona' : 'Tutti'}
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              {/* Add to Queue */}
+              <button
+                disabled={selectedTrackIds.size === 0}
+                onClick={() => {
+                  const selectedTracks = tracks.filter((t) => selectedTrackIds.has(t.id));
+                  if (onAddTracksToQueue) {
+                    onAddTracksToQueue(selectedTracks);
+                  } else {
+                    selectedTracks.forEach((t) => onAddToQueue(t));
+                  }
+                  setIsMultiSelectMode(false);
+                  setSelectedTrackIds(new Set());
+                }}
+                className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold transition active:scale-95 disabled:opacity-30 cursor-pointer shadow-sm"
+                style={{
+                  backgroundColor: palette.primaryContainer,
+                  color: palette.onPrimaryContainer,
+                }}
+                title="Aggiungi brani selezionati in coda"
+              >
+                <ListPlus className="w-3.5 h-3.5 shrink-0" />
+                <span>Coda</span>
+              </button>
+
+              {/* Add to Favorites */}
+              <button
+                disabled={selectedTrackIds.size === 0}
+                onClick={() => {
+                  const ids = Array.from(selectedTrackIds);
+                  if (onBatchToggleFavorite) {
+                    onBatchToggleFavorite(ids);
+                  } else {
+                    ids.forEach((id) => onToggleFavorite(id));
+                  }
+                  setIsMultiSelectMode(false);
+                  setSelectedTrackIds(new Set());
+                }}
+                className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold transition active:scale-95 disabled:opacity-30 cursor-pointer shadow-sm"
+                style={{
+                  backgroundColor: palette.secondaryContainer,
+                  color: palette.onSecondaryContainer,
+                }}
+                title="Aggiungi o rimuovi dai preferiti"
+              >
+                <Heart className="w-3.5 h-3.5 shrink-0" />
+                <span>Preferiti</span>
+              </button>
+
+              {/* Delete / Remove */}
+              <button
+                disabled={selectedTrackIds.size === 0}
+                onClick={() => setBatchConfirmDeleteOpen(true)}
+                className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold transition active:scale-95 disabled:opacity-30 bg-red-500/15 text-red-600 hover:bg-red-500/25 cursor-pointer shadow-sm"
+                title="Elimina brani selezionati"
+              >
+                <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                <span>Cancella</span>
+              </button>
+
+              {/* Close */}
+              <button
+                onClick={() => {
+                  setIsMultiSelectMode(false);
+                  setSelectedTrackIds(new Set());
+                }}
+                className="p-2 rounded-full hover:bg-black/10 active:scale-90 transition opacity-70 hover:opacity-100 cursor-pointer"
+                title="Annulla selezione"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 

@@ -79,6 +79,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
   onClearQueue,
   onUpdateEqualizer,
   onChangeAudioOutputRoute,
+  onOpenLockscreen,
 }) => {
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const [isEqualizerOpen, setIsEqualizerOpen] = useState(false);
@@ -157,11 +158,11 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
         />
 
         {/* Top App Bar */}
-        <div className="w-full px-6 pt-4 pb-2 flex items-center justify-between z-10">
+        <div className="w-full px-6 pt-10 sm:pt-8 pb-3 flex items-center justify-between z-10">
           <button
             id="full-player-dismiss-btn"
             onClick={onClose}
-            className="p-2.5 -ml-2 rounded-full hover:bg-black/5 active:scale-95 transition"
+            className="p-3 -ml-2 rounded-full bg-black/5 hover:bg-black/10 active:scale-95 transition flex items-center justify-center cursor-pointer shadow-xs"
             title="Chiudi player"
           >
             <ChevronDown className="w-6 h-6 opacity-85" />
@@ -176,14 +177,25 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
             </span>
           </div>
 
-          <div className="relative">
-            <button
-              onClick={() => setIsRouteMenuOpen(!isRouteMenuOpen)}
-              className="p-2.5 -mr-2 rounded-full hover:bg-black/5 active:scale-95 transition"
-              title="Dispositivo audio di output"
-            >
-              <MoreVertical className="w-5 h-5 opacity-85" />
-            </button>
+          <div className="flex items-center gap-1">
+            {onOpenLockscreen && (
+              <button
+                onClick={onOpenLockscreen}
+                className="p-2.5 rounded-full hover:bg-black/5 active:scale-95 transition cursor-pointer"
+                title="Schermata di blocco Always-On"
+              >
+                <Lock className="w-5 h-5 opacity-80" />
+              </button>
+            )}
+
+            <div className="relative">
+              <button
+                onClick={() => setIsRouteMenuOpen(!isRouteMenuOpen)}
+                className="p-2.5 -mr-2 rounded-full hover:bg-black/5 active:scale-95 transition cursor-pointer"
+                title="Dispositivo audio di output"
+              >
+                <MoreVertical className="w-5 h-5 opacity-85" />
+              </button>
 
             {/* Audio Route Selector Popover */}
             {isRouteMenuOpen && (
@@ -223,6 +235,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                 </button>
               </div>
             )}
+            </div>
           </div>
         </div>
 

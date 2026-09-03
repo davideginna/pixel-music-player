@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, ListMusic, Play, Trash2, Plus, Music } from 'lucide-react';
 import { DynamicPalette, Playlist, Track } from '../types';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface PlaylistModalProps {
   playlist: Playlist | null;
@@ -28,6 +29,7 @@ export const PlaylistModal: React.FC<PlaylistModalProps> = ({
   const [description, setDescription] = useState(playlist?.description || '');
   const [selectedTrackIds, setSelectedTrackIds] = useState<string[]>(playlist?.trackIds || []);
   const [isEditingTracks, setIsEditingTracks] = useState(false);
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
   if (!isOpen) return null;
 
@@ -63,6 +65,7 @@ export const PlaylistModal: React.FC<PlaylistModalProps> = ({
   };
 
   return (
+    <>
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-sm">
         <motion.div
@@ -97,13 +100,8 @@ export const PlaylistModal: React.FC<PlaylistModalProps> = ({
             <div className="flex items-center gap-2">
               {!isCreating && playlist && (
                 <button
-                  onClick={() => {
-                    if (confirm('Vuoi eliminare questa playlist?')) {
-                      onDeletePlaylist(playlist.id);
-                      onClose();
-                    }
-                  }}
-                  className="p-2 rounded-full hover:bg-red-500/10 text-red-500 transition"
+                  onClick={() => setShowConfirmDelete(true)}
+                  className="p-2 rounded-full hover:bg-red-500/10 text-red-500 transition cursor-pointer"
                   title="Elimina playlist"
                 >
                   <Trash2 className="w-5 h-5" />
@@ -259,5 +257,24 @@ export const PlaylistModal: React.FC<PlaylistModalProps> = ({
         </motion.div>
       </div>
     </AnimatePresence>
+
+    <ConfirmDialog
+      isOpen={showConfirmDelete}
+      title="Eliminare playlist?"
+      description={`Vuoi eliminare la playlist "${playlist?.title}"? I brani rimarranno comunque nella tua libreria locale.`}
+      confirmLabel="Elimina"
+      cancelLabel="Annulla"
+      isDestructive={true}
+      onConfirm={() => {
+        setShowConfirmDelete(false);
+        if (playlist) {
+          onDeletePlaylist(playlist.id);
+        }
+        onClose();
+      }}
+      onClose={() => setShowConfirmDelete(false)}
+      palette={palette}
+    />
+    </>
   );
 };

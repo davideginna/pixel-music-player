@@ -47,12 +47,15 @@ class StorageService {
         const req = store.getAll();
         req.onsuccess = () => {
           const result = req.result as Track[];
-          if (!result || result.length === 0) {
-            // Seed initial tracks
+          const hasSeeded = localStorage.getItem('pixel_music_tracks_seeded');
+          if ((!result || result.length === 0) && !hasSeeded) {
+            // First time launch: seed initial tracks
             this.saveTracks(INITIAL_TRACKS);
+            localStorage.setItem('pixel_music_tracks_seeded', 'true');
             resolve(INITIAL_TRACKS);
           } else {
-            resolve(result);
+            localStorage.setItem('pixel_music_tracks_seeded', 'true');
+            resolve(result || []);
           }
         };
         req.onerror = () => resolve(INITIAL_TRACKS);
@@ -65,9 +68,13 @@ class StorageService {
   public async saveTracks(tracks: Track[]): Promise<void> {
     try {
       const db = await this.openDB();
-      const tx = db.transaction('tracks', 'readwrite');
-      const store = tx.objectStore('tracks');
-      tracks.forEach((track) => store.put(track));
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('tracks', 'readwrite');
+        const store = tx.objectStore('tracks');
+        tracks.forEach((track) => store.put(track));
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
     } catch (e) {
       console.warn('Storage error on saveTracks', e);
     }
@@ -76,9 +83,13 @@ class StorageService {
   public async updateTrack(track: Track): Promise<void> {
     try {
       const db = await this.openDB();
-      const tx = db.transaction('tracks', 'readwrite');
-      const store = tx.objectStore('tracks');
-      store.put(track);
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('tracks', 'readwrite');
+        const store = tx.objectStore('tracks');
+        const req = store.put(track);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
     } catch (e) {
       console.warn('Storage error on updateTrack', e);
     }
@@ -87,9 +98,13 @@ class StorageService {
   public async deleteTrack(id: string): Promise<void> {
     try {
       const db = await this.openDB();
-      const tx = db.transaction('tracks', 'readwrite');
-      const store = tx.objectStore('tracks');
-      store.delete(id);
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('tracks', 'readwrite');
+        const store = tx.objectStore('tracks');
+        const req = store.delete(id);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
     } catch (e) {
       console.warn('Storage error on deleteTrack', e);
     }
@@ -125,11 +140,14 @@ class StorageService {
         const req = store.getAll();
         req.onsuccess = () => {
           const result = req.result as Playlist[];
-          if (!result || result.length === 0) {
+          const hasSeeded = localStorage.getItem('pixel_music_playlists_seeded');
+          if ((!result || result.length === 0) && !hasSeeded) {
             this.savePlaylists(defaultPlaylists);
+            localStorage.setItem('pixel_music_playlists_seeded', 'true');
             resolve(defaultPlaylists);
           } else {
-            resolve(result);
+            localStorage.setItem('pixel_music_playlists_seeded', 'true');
+            resolve(result || []);
           }
         };
         req.onerror = () => resolve(defaultPlaylists);
@@ -142,9 +160,13 @@ class StorageService {
   public async savePlaylists(playlists: Playlist[]): Promise<void> {
     try {
       const db = await this.openDB();
-      const tx = db.transaction('playlists', 'readwrite');
-      const store = tx.objectStore('playlists');
-      playlists.forEach((pl) => store.put(pl));
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('playlists', 'readwrite');
+        const store = tx.objectStore('playlists');
+        playlists.forEach((pl) => store.put(pl));
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
     } catch (e) {
       console.warn('Storage error on savePlaylists', e);
     }
@@ -153,9 +175,13 @@ class StorageService {
   public async savePlaylist(playlist: Playlist): Promise<void> {
     try {
       const db = await this.openDB();
-      const tx = db.transaction('playlists', 'readwrite');
-      const store = tx.objectStore('playlists');
-      store.put(playlist);
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('playlists', 'readwrite');
+        const store = tx.objectStore('playlists');
+        const req = store.put(playlist);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
     } catch (e) {
       console.warn('Storage error on savePlaylist', e);
     }
@@ -164,9 +190,13 @@ class StorageService {
   public async deletePlaylist(id: string): Promise<void> {
     try {
       const db = await this.openDB();
-      const tx = db.transaction('playlists', 'readwrite');
-      const store = tx.objectStore('playlists');
-      store.delete(id);
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('playlists', 'readwrite');
+        const store = tx.objectStore('playlists');
+        const req = store.delete(id);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
     } catch (e) {
       console.warn('Storage error on deletePlaylist', e);
     }

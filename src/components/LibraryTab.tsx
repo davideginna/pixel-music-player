@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   Music,
   Disc3,
@@ -17,6 +18,8 @@ import {
   Trash2,
   Info,
   Clock,
+  ListPlus,
+  X,
 } from 'lucide-react';
 import {
   DynamicPalette,
@@ -26,6 +29,7 @@ import {
   Playlist,
   Track,
 } from '../types';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface LibraryTabProps {
   tracks: Track[];
@@ -37,6 +41,7 @@ interface LibraryTabProps {
   onAddToQueue: (track: Track) => void;
   onToggleFavorite: (trackId: string) => void;
   onDeleteTrack: (trackId: string) => void;
+  onDeletePlaylist?: (playlistId: string) => void;
   onOpenFolderScanner: () => void;
   onCreatePlaylist: () => void;
   onSelectPlaylist: (playlist: Playlist) => void;
@@ -53,6 +58,7 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
   onAddToQueue,
   onToggleFavorite,
   onDeleteTrack,
+  onDeletePlaylist,
   onOpenFolderScanner,
   onCreatePlaylist,
   onSelectPlaylist,
@@ -62,7 +68,9 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
   const [sortBy, setSortBy] = useState<LibrarySortBy>('title');
   const [sortOrder, setSortOrder] = useState<LibrarySortOrder>('asc');
   const [isGridView, setIsGridView] = useState(false);
-  const [activeMenuTrackId, setActiveMenuTrackId] = useState<string | null>(null);
+  const [actionTrack, setActionTrack] = useState<Track | null>(null);
+  const [trackToDelete, setTrackToDelete] = useState<Track | null>(null);
+  const [playlistToDelete, setPlaylistToDelete] = useState<Playlist | null>(null);
 
   // Selected filter (for album/artist drill down)
   const [selectedAlbum, setSelectedAlbum] = useState<string | null>(null);
@@ -361,11 +369,25 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
                   <p className="text-xs opacity-70">{pl.trackIds.length} brani • {pl.description || 'Playlist creata'}</p>
                 </div>
               </div>
-              <div
-                className="w-8 h-8 rounded-full flex items-center justify-center shadow-sm"
-                style={{ backgroundColor: palette.primary, color: palette.onPrimary }}
-              >
-                <Play className="w-4 h-4 fill-current ml-0.5" />
+              <div className="flex items-center gap-1.5">
+                {onDeletePlaylist && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPlaylistToDelete(pl);
+                    }}
+                    className="p-2 rounded-full hover:bg-red-500/10 text-red-500 transition opacity-70 hover:opacity-100"
+                    title="Elimina playlist"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center shadow-sm"
+                  style={{ backgroundColor: palette.primary, color: palette.onPrimary }}
+                >
+                  <Play className="w-4 h-4 fill-current ml-0.5" />
+                </div>
               </div>
             </div>
           ))}
@@ -428,6 +450,16 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
                           <Play className="w-6 h-6 fill-white text-white" />
                         </div>
                       )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActionTrack(track);
+                        }}
+                        className="absolute top-1.5 right-1.5 p-1.5 rounded-full bg-black/40 hover:bg-black/70 text-white backdrop-blur-sm transition"
+                        title="Opzioni brano"
+                      >
+                        <MoreVertical className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                     <h4 className="text-xs font-bold truncate">{track.title}</h4>
                     <p className="text-[11px] opacity-70 truncate">{track.artist}</p>
@@ -490,9 +522,9 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          onShowTrackInfo(track);
+                          setActionTrack(track);
                         }}
-                        className="p-1.5 rounded-full hover:bg-black/10 transition opacity-70 hover:opacity-100"
+                        className="p-1.5 rounded-full hover:bg-black/10 transition opacity-70 hover:opacity-100 cursor-pointer"
                         title="Dettagli e opzioni"
                       >
                         <MoreVertical className="w-4 h-4" />
@@ -511,6 +543,144 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
           )}
         </>
       )}
+
+      {/* Material 3 Track Actions Bottom Sheet */}
+      <AnimatePresence>
+        {actionTrack && (
+          <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+              className="w-full rounded-t-[32px] p-5 shadow-2xl select-none"
+              style={{
+                backgroundColor: palette.surfaceContainerHigh,
+                color: palette.onSurface,
+              }}
+            >
+              {/* Sheet Header with Track info */}
+              <div className="flex items-center justify-between pb-3 mb-2 border-b border-black/10">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <img
+                    src={actionTrack.coverUrl}
+                    alt={actionTrack.title}
+                    className="w-12 h-12 rounded-xl object-cover shadow-sm shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-sm font-bold truncate leading-tight">{actionTrack.title}</h4>
+                    <p className="text-xs opacity-70 truncate leading-tight mt-0.5">{actionTrack.artist}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setActionTrack(null)}
+                  className="p-2 rounded-full hover:bg-black/10 transition shrink-0 ml-2"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-1">
+                <button
+                  onClick={() => {
+                    onSelectTrack(actionTrack);
+                    setActionTrack(null);
+                  }}
+                  className="w-full flex items-center gap-3.5 p-3 rounded-2xl hover:bg-black/5 active:scale-98 transition text-xs font-semibold"
+                >
+                  <Play className="w-4 h-4" style={{ color: palette.primary }} />
+                  <span>Riproduci subito</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    onAddToQueue(actionTrack);
+                    setActionTrack(null);
+                  }}
+                  className="w-full flex items-center gap-3.5 p-3 rounded-2xl hover:bg-black/5 active:scale-98 transition text-xs font-semibold"
+                >
+                  <ListPlus className="w-4 h-4" />
+                  <span>Aggiungi alla coda</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    onToggleFavorite(actionTrack.id);
+                  }}
+                  className="w-full flex items-center gap-3.5 p-3 rounded-2xl hover:bg-black/5 active:scale-98 transition text-xs font-semibold"
+                >
+                  <Heart
+                    className={`w-4 h-4 ${
+                      actionTrack.isFavorite ? 'fill-red-500 text-red-500' : 'opacity-80'
+                    }`}
+                  />
+                  <span>{actionTrack.isFavorite ? 'Rimuovi dai Preferiti' : 'Aggiungi ai Preferiti'}</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    const t = actionTrack;
+                    setActionTrack(null);
+                    onShowTrackInfo(t);
+                  }}
+                  className="w-full flex items-center gap-3.5 p-3 rounded-2xl hover:bg-black/5 active:scale-98 transition text-xs font-semibold"
+                >
+                  <Info className="w-4 h-4 opacity-80" />
+                  <span>Informazioni brano & metadati</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setTrackToDelete(actionTrack);
+                    setActionTrack(null);
+                  }}
+                  className="w-full flex items-center gap-3.5 p-3 rounded-2xl hover:bg-red-500/10 active:scale-98 transition text-xs font-bold text-red-500"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Elimina dalla libreria locale</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Confirmation Dialog: Delete Track */}
+      <ConfirmDialog
+        isOpen={trackToDelete !== null}
+        title="Rimuovere brano?"
+        description={`Vuoi davvero eliminare "${trackToDelete?.title}" (${trackToDelete?.artist}) dalla libreria locale e dalla coda?`}
+        confirmLabel="Elimina"
+        cancelLabel="Annulla"
+        isDestructive={true}
+        onConfirm={() => {
+          if (trackToDelete) {
+            onDeleteTrack(trackToDelete.id);
+            setTrackToDelete(null);
+          }
+        }}
+        onClose={() => setTrackToDelete(null)}
+        palette={palette}
+      />
+
+      {/* Confirmation Dialog: Delete Playlist */}
+      <ConfirmDialog
+        isOpen={playlistToDelete !== null}
+        title="Eliminare playlist?"
+        description={`Vuoi eliminare la playlist "${playlistToDelete?.title}"? I brani continueranno a rimanere nella libreria musicale.`}
+        confirmLabel="Elimina"
+        cancelLabel="Annulla"
+        isDestructive={true}
+        onConfirm={() => {
+          if (playlistToDelete && onDeletePlaylist) {
+            onDeletePlaylist(playlistToDelete.id);
+            setPlaylistToDelete(null);
+          }
+        }}
+        onClose={() => setPlaylistToDelete(null)}
+        palette={palette}
+      />
     </div>
   );
 };

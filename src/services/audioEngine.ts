@@ -331,6 +331,15 @@ class AudioEngine {
     this.isSynthPlaying = false;
   }
 
+  public pause() {
+    this.stopSynth();
+    if (this.audio && !this.audio.paused) {
+      this.audio.pause();
+    }
+    this.updateMediaSessionPlaybackState('paused');
+    if (this.onPlayPauseCallback) this.onPlayPauseCallback(false);
+  }
+
   public destroy() {
     this.stopSynth();
     if (this.audio) {

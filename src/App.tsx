@@ -33,12 +33,16 @@ import { TrackInfoModal } from './components/TrackInfoModal';
 import { FolderScannerModal } from './components/FolderScannerModal';
 import { PlaylistModal } from './components/PlaylistModal';
 import { PixelDeviceFrame } from './components/PixelDeviceFrame';
+import { ConfirmDialog } from './components/ConfirmDialog';
+import { Toast, ToastData } from './components/Toast';
 
 export default function App() {
   // Persistence state
   const [tracks, setTracks] = useState<Track[]>(INITIAL_TRACKS);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [currentTab, setCurrentTab] = useState<NavigationTab>('home');
+  const [toast, setToast] = useState<ToastData | null>(null);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
   // Playback state
   const [isPlaying, setIsPlaying] = useState(false);
@@ -287,21 +291,59 @@ export default function App() {
     );
   }, [triggerHaptic]);
 
-  // Delete Track
+  // Delete Track with undo and playlist cleanup
   const handleDeleteTrack = useCallback((trackId: string) => {
     triggerHaptic();
+    const trackToDelete = tracks.find((t) => t.id === trackId);
     storage.deleteTrack(trackId);
-    setTracks((prev) => prev.filter((t) => t.id !== trackId));
+
+    // Remove from tracks and queue
+    const remainingTracks = tracks.filter((t) => t.id !== trackId);
+    setTracks(remainingTracks);
     setQueue((prev) => prev.filter((id) => id !== trackId));
+
+    // Remove from all playlists and persist
+    setPlaylists((prev) => {
+      const updated = prev.map((pl) => ({
+        ...pl,
+        trackIds: pl.trackIds.filter((id) => id !== trackId),
+      }));
+      storage.savePlaylists(updated);
+      return updated;
+    });
+
+    // If deleting currently playing track
     if (currentTrackId === trackId) {
-      handleNextTrack();
+      if (remainingTracks.length > 0) {
+        handleNextTrack();
+      } else {
+        audioEngine.pause();
+        setIsPlaying(false);
+        setCurrentTrackId(null);
+        setCurrentTime(0);
+      }
     }
-  }, [currentTrackId, handleNextTrack, triggerHaptic]);
+
+    if (trackToDelete) {
+      setToast({
+        message: `"${trackToDelete.title}" rimosso`,
+        actionLabel: 'Annulla',
+        onAction: () => {
+          storage.saveTracks([trackToDelete]);
+          setTracks((prev) => [trackToDelete, ...prev]);
+          setQueue((prev) => [...prev, trackToDelete.id]);
+        },
+      });
+    }
+  }, [currentTrackId, handleNextTrack, tracks, triggerHaptic]);
 
   // Add Track to Queue
   const handleAddToQueue = useCallback((track: Track) => {
     triggerHaptic();
     setQueue((prev) => [...prev, track.id]);
+    setToast({
+      message: `"${track.title}" aggiunto alla coda`,
+    });
   }, [triggerHaptic]);
 
   // Remove Track from Queue
@@ -345,11 +387,23 @@ export default function App() {
     });
   }, []);
 
-  // Delete Playlist
+  // Delete Playlist with undo
   const handleDeletePlaylist = useCallback((id: string) => {
+    triggerHaptic();
+    const plToDelete = playlists.find((p) => p.id === id);
     storage.deletePlaylist(id);
     setPlaylists((prev) => prev.filter((p) => p.id !== id));
-  }, []);
+    if (plToDelete) {
+      setToast({
+        message: `Playlist "${plToDelete.title}" eliminata`,
+        actionLabel: 'Annulla',
+        onAction: () => {
+          storage.savePlaylist(plToDelete);
+          setPlaylists((prev) => [...prev, plToDelete]);
+        },
+      });
+    }
+  }, [playlists, triggerHaptic]);
 
   // Imported tracks handler
   const handleTracksImported = useCallback((newTracks: Track[]) => {
@@ -359,18 +413,24 @@ export default function App() {
     if (newTracks.length > 0) {
       handleSelectTrack(newTracks[0]);
     }
+    setToast({
+      message: `${newTracks.length} brani importati nella libreria`,
+    });
   }, [handleSelectTrack]);
 
-  // Reset library to default
-  const handleResetLibrary = useCallback(() => {
-    if (confirm('Vuoi ripristinare la libreria musicale iniziale di Google Pixel?')) {
-      storage.saveTracks(INITIAL_TRACKS);
-      setTracks(INITIAL_TRACKS);
-      setQueue(INITIAL_TRACKS.map((t) => t.id));
-      setCurrentTrackId(INITIAL_TRACKS[0].id);
-      audioEngine.playTrack(INITIAL_TRACKS[0], 0);
-      setIsPlaying(true);
-    }
+  // Reset library to default (invoked via confirm dialog)
+  const handleConfirmResetLibrary = useCallback(() => {
+    localStorage.removeItem('pixel_music_tracks_seeded');
+    localStorage.removeItem('pixel_music_playlists_seeded');
+    storage.saveTracks(INITIAL_TRACKS);
+    setTracks(INITIAL_TRACKS);
+    setQueue(INITIAL_TRACKS.map((t) => t.id));
+    setCurrentTrackId(INITIAL_TRACKS[0].id);
+    audioEngine.playTrack(INITIAL_TRACKS[0], 0);
+    setIsPlaying(true);
+    setToast({
+      message: 'Libreria musicale ripristinata ai valori iniziali',
+    });
   }, []);
 
   // Theme handlers
@@ -454,6 +514,7 @@ export default function App() {
             onAddToQueue={handleAddToQueue}
             onToggleFavorite={handleToggleFavorite}
             onDeleteTrack={handleDeleteTrack}
+            onDeletePlaylist={handleDeletePlaylist}
             onOpenFolderScanner={() => setIsFolderScannerOpen(true)}
             onCreatePlaylist={() => {
               setPlaylistModalTarget(null);
@@ -495,7 +556,7 @@ export default function App() {
             onOpenEqualizer={() => setIsFullPlayerOpen(true)}
             onOpenFolderScanner={() => setIsFolderScannerOpen(true)}
             onOpenLockscreenPreview={() => setIsLockscreenOpen(true)}
-            onResetLibrary={handleResetLibrary}
+            onResetLibrary={() => setIsResetConfirmOpen(true)}
           />
         )}
       </main>
@@ -626,6 +687,29 @@ export default function App() {
         onAddToQueue={handleAddToQueue}
         onToggleFavorite={handleToggleFavorite}
         onDeleteTrack={handleDeleteTrack}
+        palette={activePalette}
+      />
+
+      {/* 6. Confirm Dialog: Reset Library */}
+      <ConfirmDialog
+        isOpen={isResetConfirmOpen}
+        title="Ripristinare libreria?"
+        description="Vuoi ripristinare la libreria iniziale di brani demo Pixel? Tutti i file importati e le playlist create manualmente verranno rimossi."
+        confirmLabel="Ripristina"
+        cancelLabel="Annulla"
+        isDestructive={true}
+        onConfirm={() => {
+          handleConfirmResetLibrary();
+          setIsResetConfirmOpen(false);
+        }}
+        onClose={() => setIsResetConfirmOpen(false)}
+        palette={activePalette}
+      />
+
+      {/* 7. Floating Material 3 Toast / Snackbar */}
+      <Toast
+        toast={toast}
+        onDismiss={() => setToast(null)}
         palette={activePalette}
       />
     </PixelDeviceFrame>

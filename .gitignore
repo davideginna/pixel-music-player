@@ -13,5 +13,4 @@ android/.gradle/
 android/local.properties
 android/captures/
 .gradle/
-capacitor.config.json
 

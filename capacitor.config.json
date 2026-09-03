@@ -1,0 +1,6 @@
+{
+  "appId": "com.google.pixel.music",
+  "appName": "Pixel Music Player",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}

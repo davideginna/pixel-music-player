@@ -55,7 +55,17 @@ class StorageService {
             resolve(INITIAL_TRACKS);
           } else {
             localStorage.setItem('pixel_music_tracks_seeded', 'true');
-            resolve(result || []);
+            const processed = (result || []).map((t) => {
+              if (t.audioBlob) {
+                try {
+                  t.audioUrl = URL.createObjectURL(t.audioBlob);
+                } catch {
+                  // ignore
+                }
+              }
+              return t;
+            });
+            resolve(processed);
           }
         };
         req.onerror = () => resolve(INITIAL_TRACKS);
@@ -107,6 +117,21 @@ class StorageService {
       });
     } catch (e) {
       console.warn('Storage error on deleteTrack', e);
+    }
+  }
+
+  public async deleteTracks(ids: string[]): Promise<void> {
+    try {
+      const db = await this.openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('tracks', 'readwrite');
+        const store = tx.objectStore('tracks');
+        ids.forEach((id) => store.delete(id));
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    } catch (e) {
+      console.warn('Storage error on deleteTracks', e);
     }
   }
 

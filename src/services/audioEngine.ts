@@ -36,7 +36,10 @@ class AudioEngine {
 
       this.audio.addEventListener('timeupdate', () => {
         if (this.audio && this.onTimeUpdateCallback) {
-          this.onTimeUpdateCallback(this.audio.currentTime, this.audio.duration || 0);
+          const current = this.audio.currentTime;
+          const dur = this.audio.duration || 0;
+          this.onTimeUpdateCallback(current, dur);
+          this.updateMediaSessionPosition(current, dur);
         }
       });
 
@@ -216,16 +219,40 @@ class AudioEngine {
     return dataArray;
   }
 
-  private setupMediaSession(track: Track) {
+  private async setupMediaSession(track: Track) {
     if ('mediaSession' in navigator) {
+      let pngArtwork = track.coverUrl;
+      try {
+        if (track.coverUrl.startsWith('data:image/svg') && typeof document !== 'undefined') {
+          const canvas = document.createElement('canvas');
+          canvas.width = 512;
+          canvas.height = 512;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            const img = new Image();
+            await new Promise<void>((resolve) => {
+              img.onload = () => {
+                ctx.drawImage(img, 0, 0, 512, 512);
+                pngArtwork = canvas.toDataURL('image/png');
+                resolve();
+              };
+              img.onerror = () => resolve();
+              img.src = track.coverUrl;
+            });
+          }
+        }
+      } catch {
+        // Fallback to original
+      }
+
       navigator.mediaSession.metadata = new MediaMetadata({
         title: track.title,
         artist: track.artist,
         album: track.album,
         artwork: [
-          { src: track.coverUrl, sizes: '96x96', type: 'image/png' },
-          { src: track.coverUrl, sizes: '192x192', type: 'image/png' },
-          { src: track.coverUrl, sizes: '512x512', type: 'image/png' },
+          { src: pngArtwork, sizes: '512x512', type: 'image/png' },
+          { src: pngArtwork, sizes: '256x256', type: 'image/png' },
+          { src: pngArtwork, sizes: '128x128', type: 'image/png' },
         ],
       });
 
@@ -252,6 +279,23 @@ class AudioEngine {
       navigator.mediaSession.setActionHandler('seekbackward', () => {
         if (this.audio) this.seek(Math.max(0, this.audio.currentTime - 10));
       });
+      navigator.mediaSession.setActionHandler('stop', () => {
+        this.pause();
+      });
+    }
+  }
+
+  public updateMediaSessionPosition(position: number, duration: number) {
+    if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession && duration > 0) {
+      try {
+        navigator.mediaSession.setPositionState({
+          duration: Math.max(1, Math.round(duration)),
+          playbackRate: 1,
+          position: Math.min(Math.max(0, Math.round(position)), Math.max(1, Math.round(duration))),
+        });
+      } catch {
+        // Ignore if state cannot be set
+      }
     }
   }
 
@@ -266,6 +310,18 @@ class AudioEngine {
     if (!this.audioCtx) return;
     this.stopSynth();
     this.isSynthPlaying = true;
+
+    // Keep active audio stream alive so Android lock screen media controls don't disappear
+    if (this.audio) {
+      try {
+        // 1-second silent WAV loop
+        this.audio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+        this.audio.loop = true;
+        this.audio.play().catch(() => {});
+      } catch {
+        // ignore
+      }
+    }
 
     const synthMaster = this.audioCtx.createGain();
     synthMaster.gain.value = 0.18;
@@ -311,9 +367,11 @@ class AudioEngine {
       step++;
       virtualCurrentTime += 0.5;
 
+      const pos = virtualCurrentTime % track.duration;
       if (this.onTimeUpdateCallback) {
-        this.onTimeUpdateCallback(virtualCurrentTime % track.duration, track.duration);
+        this.onTimeUpdateCallback(pos, track.duration);
       }
+      this.updateMediaSessionPosition(pos, track.duration);
     };
 
     tick();
@@ -329,6 +387,9 @@ class AudioEngine {
       this.synthInterval = null;
     }
     this.isSynthPlaying = false;
+    if (this.audio && this.audio.src.startsWith('data:audio/wav')) {
+      this.audio.pause();
+    }
   }
 
   public pause() {

@@ -53,9 +53,10 @@ export const FolderScannerModal: React.FC<FolderScannerModalProps> = ({
     }
   };
 
-  // Modern File System Access API
+  // Handle picking directory or files
   const handlePickDirectory = async () => {
-    if ('showDirectoryPicker' in window) {
+    // If desktop Chromium with showDirectoryPicker
+    if ('showDirectoryPicker' in window && !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
       try {
         setIsScanning(true);
         setStatusMessage('Accesso alla cartella autorizzato...');
@@ -75,12 +76,13 @@ export const FolderScannerModal: React.FC<FolderScannerModalProps> = ({
       } catch (err: unknown) {
         setIsScanning(false);
         if ((err as Error)?.name !== 'AbortError') {
-          // Fallback to directory input
-          dirInputRef.current?.click();
+          // Fallback to standard multi-file picker
+          fileInputRef.current?.click();
         }
       }
     } else {
-      dirInputRef.current?.click();
+      // Android / mobile: trigger native multi-audio picker directly
+      fileInputRef.current?.click();
     }
   };
 
@@ -174,32 +176,46 @@ export const FolderScannerModal: React.FC<FolderScannerModalProps> = ({
               }}
             />
 
+            {/* Android specific help tip */}
+            <div
+              className="p-3.5 rounded-2xl text-xs flex items-start gap-2.5 border border-black/5"
+              style={{ backgroundColor: palette.surfaceContainer, color: palette.onSurface }}
+            >
+              <FolderOpen className="w-4 h-4 shrink-0 mt-0.5" style={{ color: palette.primary }} />
+              <div className="space-y-1">
+                <p className="font-bold">Come importare cartelle su Android:</p>
+                <p className="opacity-80 leading-relaxed text-[11px]">
+                  Tocca <strong>"Scegli cartella / brani"</strong>. Nel gestore file di sistema, naviga nella tua cartella musicale, tieni premuto un brano e tocca i tre puntini ⋮ &gt; <strong>"Seleziona tutto"</strong> per importare l'intero album o cartella.
+                </p>
+              </div>
+            </div>
+
             {/* Action Buttons */}
-            <div className="grid grid-cols-2 gap-3 pt-2">
+            <div className="grid grid-cols-2 gap-3 pt-1">
               <button
                 onClick={handlePickDirectory}
                 disabled={isScanning}
-                className="py-3 px-4 rounded-2xl text-xs font-bold shadow-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50"
+                className="py-3.5 px-4 rounded-2xl text-xs font-bold shadow-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50 cursor-pointer"
                 style={{
                   backgroundColor: palette.primary,
                   color: palette.onPrimary,
                 }}
               >
-                <FolderOpen className="w-4 h-4" />
-                <span>Scegli cartella</span>
+                <FolderOpen className="w-4 h-4 shrink-0" />
+                <span className="truncate">Scegli cartella / brani</span>
               </button>
 
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isScanning}
-                className="py-3 px-4 rounded-2xl text-xs font-bold shadow-sm flex items-center justify-center gap-2 transition active:scale-95 border border-black/10 disabled:opacity-50"
+                className="py-3.5 px-4 rounded-2xl text-xs font-bold shadow-sm flex items-center justify-center gap-2 transition active:scale-95 border border-black/10 disabled:opacity-50 cursor-pointer"
                 style={{
                   backgroundColor: palette.surfaceContainer,
                   color: palette.onSurface,
                 }}
               >
-                <Music className="w-4 h-4" />
-                <span>Scegli singoli file</span>
+                <Music className="w-4 h-4 shrink-0" />
+                <span className="truncate">Seleziona file</span>
               </button>
             </div>
 

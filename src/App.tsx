@@ -337,6 +337,37 @@ export default function App() {
     }
   }, [currentTrackId, handleNextTrack, tracks, triggerHaptic]);
 
+  // Batch Delete Tracks
+  const handleDeleteTracks = useCallback((trackIds: string[]) => {
+    triggerHaptic();
+    const tracksToRemove = tracks.filter((t) => trackIds.includes(t.id));
+    const idsSet = new Set(trackIds);
+
+    storage.deleteTracks(trackIds);
+    setTracks((prev) => prev.filter((t) => !idsSet.has(t.id)));
+    setQueue((prev) => prev.filter((id) => !idsSet.has(id)));
+
+    if (currentTrackId && idsSet.has(currentTrackId)) {
+      handleNextTrack();
+      if (tracks.length <= trackIds.length) {
+        audioEngine.pause();
+        setIsPlaying(false);
+        setCurrentTrackId(null);
+        setCurrentTime(0);
+      }
+    }
+
+    setToast({
+      message: `${trackIds.length} ${trackIds.length === 1 ? 'brano rimosso' : 'brani rimossi'} dalla libreria`,
+      actionLabel: 'Annulla',
+      onAction: () => {
+        storage.saveTracks(tracksToRemove);
+        setTracks((prev) => [...tracksToRemove, ...prev]);
+        setQueue((prev) => [...prev, ...tracksToRemove.map((t) => t.id)]);
+      },
+    });
+  }, [currentTrackId, handleNextTrack, tracks, triggerHaptic]);
+
   // Add Track to Queue
   const handleAddToQueue = useCallback((track: Track) => {
     triggerHaptic();
@@ -345,6 +376,39 @@ export default function App() {
       message: `"${track.title}" aggiunto alla coda`,
     });
   }, [triggerHaptic]);
+
+  // Batch Add Tracks to Queue
+  const handleAddTracksToQueue = useCallback((tracksToAdd: Track[]) => {
+    triggerHaptic();
+    const newIds = tracksToAdd.map((t) => t.id);
+    setQueue((prev) => [...prev, ...newIds]);
+    setToast({
+      message: `${tracksToAdd.length} ${tracksToAdd.length === 1 ? 'brano aggiunto' : 'brani aggiunti'} alla coda`,
+    });
+  }, [triggerHaptic]);
+
+  // Batch Toggle Favorites
+  const handleBatchToggleFavorite = useCallback((trackIds: string[]) => {
+    triggerHaptic();
+    const idsSet = new Set(trackIds);
+    const someNotFavorite = tracks.some((t) => idsSet.has(t.id) && !t.isFavorite);
+    const targetState = someNotFavorite;
+
+    setTracks((prev) =>
+      prev.map((t) => {
+        if (idsSet.has(t.id)) {
+          const updated = { ...t, isFavorite: targetState };
+          storage.updateTrack(updated);
+          return updated;
+        }
+        return t;
+      })
+    );
+
+    setToast({
+      message: `${trackIds.length} ${trackIds.length === 1 ? 'brano' : 'brani'} ${targetState ? 'aggiunti ai preferiti' : 'rimossi dai preferiti'}`,
+    });
+  }, [tracks, triggerHaptic]);
 
   // Remove Track from Queue
   const handleRemoveFromQueue = useCallback((trackId: string) => {
@@ -514,6 +578,9 @@ export default function App() {
             onAddToQueue={handleAddToQueue}
             onToggleFavorite={handleToggleFavorite}
             onDeleteTrack={handleDeleteTrack}
+            onDeleteTracks={handleDeleteTracks}
+            onAddTracksToQueue={handleAddTracksToQueue}
+            onBatchToggleFavorite={handleBatchToggleFavorite}
             onDeletePlaylist={handleDeletePlaylist}
             onOpenFolderScanner={() => setIsFolderScannerOpen(true)}
             onCreatePlaylist={() => {

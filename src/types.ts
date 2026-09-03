@@ -9,6 +9,7 @@ export interface Track {
   trackNumber?: number;
   coverUrl: string;
   audioUrl?: string; // object URL or synthesized or stream
+  audioBlob?: Blob; // raw Blob stored in IndexedDB for permanent local playback
   filePath?: string;
   folderName?: string;
   fileSize?: string;

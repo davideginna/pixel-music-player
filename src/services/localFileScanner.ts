@@ -41,6 +41,7 @@ export async function parseAudioFile(file: File, folderName = 'Musica Locale'): 
     year: new Date().getFullYear(),
     coverUrl,
     audioUrl: objectUrl,
+    audioBlob: file,
     filePath: `local://${folderName}/${file.name}`,
     folderName,
     fileSize: `${fileSizeMb} MB`,

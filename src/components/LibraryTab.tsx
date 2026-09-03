@@ -20,6 +20,8 @@ import {
   Clock,
   ListPlus,
   X,
+  Check,
+  CheckSquare,
 } from 'lucide-react';
 import {
   DynamicPalette,
@@ -41,6 +43,9 @@ interface LibraryTabProps {
   onAddToQueue: (track: Track) => void;
   onToggleFavorite: (trackId: string) => void;
   onDeleteTrack: (trackId: string) => void;
+  onDeleteTracks?: (trackIds: string[]) => void;
+  onAddTracksToQueue?: (tracks: Track[]) => void;
+  onBatchToggleFavorite?: (trackIds: string[]) => void;
   onDeletePlaylist?: (playlistId: string) => void;
   onOpenFolderScanner: () => void;
   onCreatePlaylist: () => void;
@@ -58,6 +63,9 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
   onAddToQueue,
   onToggleFavorite,
   onDeleteTrack,
+  onDeleteTracks,
+  onAddTracksToQueue,
+  onBatchToggleFavorite,
   onDeletePlaylist,
   onOpenFolderScanner,
   onCreatePlaylist,
@@ -71,6 +79,79 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
   const [actionTrack, setActionTrack] = useState<Track | null>(null);
   const [trackToDelete, setTrackToDelete] = useState<Track | null>(null);
   const [playlistToDelete, setPlaylistToDelete] = useState<Playlist | null>(null);
+
+  // Multi-selection state
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const [selectedTrackIds, setSelectedTrackIds] = useState<Set<string>>(new Set());
+  const [batchConfirmDeleteOpen, setBatchConfirmDeleteOpen] = useState(false);
+
+  // Long press refs
+  const longPressTimerRef = React.useRef<number | null>(null);
+  const startPosRef = React.useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const didJustLongPressRef = React.useRef<boolean>(false);
+
+  const handlePointerDown = (track: Track, e: React.PointerEvent) => {
+    if (isMultiSelectMode) return;
+    startPosRef.current = { x: e.clientX, y: e.clientY };
+    didJustLongPressRef.current = false;
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+
+    longPressTimerRef.current = window.setTimeout(() => {
+      didJustLongPressRef.current = true;
+      if (navigator.vibrate) {
+        try {
+          navigator.vibrate(40);
+        } catch {
+          // ignore
+        }
+      }
+      setIsMultiSelectMode(true);
+      setSelectedTrackIds(new Set([track.id]));
+    }, 450);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (isMultiSelectMode) return;
+    const dx = Math.abs(e.clientX - startPosRef.current.x);
+    const dy = Math.abs(e.clientY - startPosRef.current.y);
+    if (dx > 8 || dy > 8) {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+    }
+  };
+
+  const handlePointerUp = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const toggleTrackSelection = (trackId: string) => {
+    setSelectedTrackIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(trackId)) {
+        next.delete(trackId);
+      } else {
+        next.add(trackId);
+      }
+      return next;
+    });
+  };
+
+  const handleTrackClick = (track: Track) => {
+    if (didJustLongPressRef.current) {
+      didJustLongPressRef.current = false;
+      return;
+    }
+    if (isMultiSelectMode) {
+      toggleTrackSelection(track.id);
+    } else {
+      onSelectTrack(track);
+    }
+  };
 
   // Selected filter (for album/artist drill down)
   const [selectedAlbum, setSelectedAlbum] = useState<string | null>(null);
@@ -191,6 +272,99 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
 
   return (
     <div className="w-full flex-1 overflow-y-auto px-5 pt-3 pb-24 select-none" id="pixel-library-tab">
+      {/* Multi-Selection Contextual Action Bar */}
+      <AnimatePresence>
+        {isMultiSelectMode && (
+          <motion.div
+            initial={{ opacity: 0, y: -16, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -16, scale: 0.98 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+            className="sticky top-0 z-30 mb-3 -mx-2 px-3.5 py-2.5 rounded-2xl shadow-lg border border-black/10 flex items-center justify-between gap-2 backdrop-blur-md"
+            style={{
+              backgroundColor: palette.primaryContainer,
+              color: palette.onPrimaryContainer,
+            }}
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <button
+                onClick={() => {
+                  setIsMultiSelectMode(false);
+                  setSelectedTrackIds(new Set());
+                }}
+                className="p-1.5 rounded-full hover:bg-black/10 transition cursor-pointer shrink-0"
+                title="Chiudi selezione"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <span className="text-xs sm:text-sm font-bold truncate">
+                {selectedTrackIds.size} {selectedTrackIds.size === 1 ? 'selezionato' : 'selezionati'}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={() => {
+                  if (selectedTrackIds.size === filteredSortedTracks.length) {
+                    setSelectedTrackIds(new Set());
+                  } else {
+                    setSelectedTrackIds(new Set(filteredSortedTracks.map((t) => t.id)));
+                  }
+                }}
+                className="px-2.5 py-1.5 rounded-full text-xs font-semibold hover:bg-black/10 transition cursor-pointer"
+              >
+                {selectedTrackIds.size === filteredSortedTracks.length ? 'Deseleziona' : 'Tutti'}
+              </button>
+
+              <button
+                disabled={selectedTrackIds.size === 0}
+                onClick={() => {
+                  const selectedTracks = tracks.filter((t) => selectedTrackIds.has(t.id));
+                  if (onAddTracksToQueue) {
+                    onAddTracksToQueue(selectedTracks);
+                  } else {
+                    selectedTracks.forEach((t) => onAddToQueue(t));
+                  }
+                  setIsMultiSelectMode(false);
+                  setSelectedTrackIds(new Set());
+                }}
+                className="p-2 rounded-full hover:bg-black/10 active:scale-90 transition disabled:opacity-30 cursor-pointer"
+                title="Aggiungi in coda"
+              >
+                <ListPlus className="w-4 h-4" />
+              </button>
+
+              <button
+                disabled={selectedTrackIds.size === 0}
+                onClick={() => {
+                  const ids = Array.from(selectedTrackIds);
+                  if (onBatchToggleFavorite) {
+                    onBatchToggleFavorite(ids);
+                  } else {
+                    ids.forEach((id) => onToggleFavorite(id));
+                  }
+                  setIsMultiSelectMode(false);
+                  setSelectedTrackIds(new Set());
+                }}
+                className="p-2 rounded-full hover:bg-black/10 active:scale-90 transition disabled:opacity-30 cursor-pointer"
+                title="Aggiungi / rimuovi preferiti"
+              >
+                <Heart className="w-4 h-4" />
+              </button>
+
+              <button
+                disabled={selectedTrackIds.size === 0}
+                onClick={() => setBatchConfirmDeleteOpen(true)}
+                className="p-2 rounded-full hover:bg-red-500/20 active:scale-90 transition disabled:opacity-30 text-red-600 cursor-pointer"
+                title="Elimina selezionati"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Top Header & Storage Scanner Button */}
       <div className="flex items-center justify-between mb-4">
         <div>
@@ -285,8 +459,25 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
 
         <div className="flex items-center gap-1">
           <button
+            onClick={() => {
+              setIsMultiSelectMode(!isMultiSelectMode);
+              if (isMultiSelectMode) setSelectedTrackIds(new Set());
+            }}
+            className={`p-2 rounded-full transition active:scale-95 cursor-pointer ${
+              isMultiSelectMode ? 'shadow-sm' : 'hover:bg-black/5 opacity-70 hover:opacity-100'
+            }`}
+            style={{
+              backgroundColor: isMultiSelectMode ? palette.primary : 'transparent',
+              color: isMultiSelectMode ? palette.onPrimary : 'inherit',
+            }}
+            title={isMultiSelectMode ? 'Termina selezione' : 'Selezione multipla'}
+          >
+            <CheckSquare className="w-4 h-4" />
+          </button>
+
+          <button
             onClick={() => setIsGridView(!isGridView)}
-            className="p-2 rounded-full hover:bg-black/5 active:scale-95 transition"
+            className="p-2 rounded-full hover:bg-black/5 active:scale-95 transition cursor-pointer opacity-70 hover:opacity-100"
             title={isGridView ? 'Vista elenco' : 'Vista griglia'}
           >
             {isGridView ? <List className="w-4 h-4" /> : <LayoutGrid className="w-4 h-4" />}
@@ -429,14 +620,32 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {filteredSortedTracks.map((track) => {
                 const isCurrent = track.id === currentTrackId;
+                const isSelected = selectedTrackIds.has(track.id);
                 return (
                   <div
                     key={track.id}
-                    onClick={() => onSelectTrack(track)}
-                    className="p-3 rounded-2xl flex flex-col cursor-pointer transition-all hover:shadow-sm border border-black/5 active:scale-95"
+                    onPointerDown={(e) => handlePointerDown(track, e)}
+                    onPointerMove={handlePointerMove}
+                    onPointerUp={handlePointerUp}
+                    onPointerCancel={handlePointerUp}
+                    onClick={() => handleTrackClick(track)}
+                    className={`p-3 rounded-2xl flex flex-col cursor-pointer transition-all hover:shadow-sm border active:scale-95 relative ${
+                      isSelected
+                        ? 'ring-2 ring-offset-2'
+                        : 'border-black/5'
+                    }`}
                     style={{
-                      backgroundColor: isCurrent ? palette.secondaryContainer : palette.surfaceContainer,
-                      color: isCurrent ? palette.onSecondaryContainer : palette.onSurface,
+                      backgroundColor: isSelected
+                        ? palette.primaryContainer
+                        : isCurrent
+                        ? palette.secondaryContainer
+                        : palette.surfaceContainer,
+                      color: isSelected
+                        ? palette.onPrimaryContainer
+                        : isCurrent
+                        ? palette.onSecondaryContainer
+                        : palette.onSurface,
+                      borderColor: isSelected ? palette.primary : undefined,
                     }}
                   >
                     <div className="relative aspect-square w-full rounded-xl overflow-hidden mb-2">
@@ -445,21 +654,36 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
                         alt={track.title}
                         className="w-full h-full object-cover"
                       />
-                      {isCurrent && (
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                          <Play className="w-6 h-6 fill-white text-white" />
+                      {isMultiSelectMode ? (
+                        <div
+                          className="absolute top-2 left-2 w-6 h-6 rounded-full flex items-center justify-center transition-all shadow-md z-10"
+                          style={{
+                            backgroundColor: isSelected ? palette.primary : 'rgba(0,0,0,0.5)',
+                            color: palette.onPrimary,
+                            border: isSelected ? 'none' : '2px solid white',
+                          }}
+                        >
+                          {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                         </div>
+                      ) : (
+                        <>
+                          {isCurrent && (
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                              <Play className="w-6 h-6 fill-white text-white" />
+                            </div>
+                          )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActionTrack(track);
+                            }}
+                            className="absolute top-1.5 right-1.5 p-1.5 rounded-full bg-black/40 hover:bg-black/70 text-white backdrop-blur-sm transition cursor-pointer"
+                            title="Opzioni brano"
+                          >
+                            <MoreVertical className="w-3.5 h-3.5" />
+                          </button>
+                        </>
                       )}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActionTrack(track);
-                        }}
-                        className="absolute top-1.5 right-1.5 p-1.5 rounded-full bg-black/40 hover:bg-black/70 text-white backdrop-blur-sm transition"
-                        title="Opzioni brano"
-                      >
-                        <MoreVertical className="w-3.5 h-3.5" />
-                      </button>
                     </div>
                     <h4 className="text-xs font-bold truncate">{track.title}</h4>
                     <p className="text-[11px] opacity-70 truncate">{track.artist}</p>
@@ -471,21 +695,52 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
             <div className="space-y-1.5">
               {filteredSortedTracks.map((track, index) => {
                 const isCurrent = track.id === currentTrackId;
+                const isSelected = selectedTrackIds.has(track.id);
                 return (
                   <div
                     key={track.id}
-                    onClick={() => onSelectTrack(track)}
-                    className={`flex items-center gap-3 p-2.5 rounded-2xl cursor-pointer transition-all border border-black/5 ${
-                      isCurrent ? 'font-bold shadow-sm' : 'hover:bg-black/5'
+                    onPointerDown={(e) => handlePointerDown(track, e)}
+                    onPointerMove={handlePointerMove}
+                    onPointerUp={handlePointerUp}
+                    onPointerCancel={handlePointerUp}
+                    onClick={() => handleTrackClick(track)}
+                    className={`flex items-center gap-3 p-2.5 rounded-2xl cursor-pointer transition-all border ${
+                      isSelected
+                        ? 'ring-2 ring-offset-1 font-bold shadow-sm'
+                        : isCurrent
+                        ? 'font-bold shadow-sm border-black/10'
+                        : 'hover:bg-black/5 border-black/5'
                     }`}
                     style={{
-                      backgroundColor: isCurrent ? palette.secondaryContainer : palette.surfaceContainer,
-                      color: isCurrent ? palette.onSecondaryContainer : palette.onSurface,
+                      backgroundColor: isSelected
+                        ? palette.primaryContainer
+                        : isCurrent
+                        ? palette.secondaryContainer
+                        : palette.surfaceContainer,
+                      color: isSelected
+                        ? palette.onPrimaryContainer
+                        : isCurrent
+                        ? palette.onSecondaryContainer
+                        : palette.onSurface,
+                      borderColor: isSelected ? palette.primary : undefined,
                     }}
                   >
-                    <span className="w-5 text-center text-xs opacity-50 font-mono">
-                      {index + 1}
-                    </span>
+                    {isMultiSelectMode ? (
+                      <div
+                        className="w-5 h-5 rounded-full flex items-center justify-center transition-all shrink-0"
+                        style={{
+                          backgroundColor: isSelected ? palette.primary : 'transparent',
+                          color: palette.onPrimary,
+                          border: isSelected ? 'none' : '2px solid rgba(128, 128, 128, 0.4)',
+                        }}
+                      >
+                        {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                      </div>
+                    ) : (
+                      <span className="w-5 text-center text-xs opacity-50 font-mono shrink-0">
+                        {index + 1}
+                      </span>
+                    )}
 
                     <img
                       src={track.coverUrl}
@@ -500,36 +755,38 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="text-xs opacity-60 font-mono pr-1">
-                        {formatTime(track.duration)}
-                      </span>
+                    {!isMultiSelectMode && (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-xs opacity-60 font-mono pr-1">
+                          {formatTime(track.duration)}
+                        </span>
 
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onToggleFavorite(track.id);
-                        }}
-                        className="p-1.5 rounded-full hover:bg-black/10 transition active:scale-90"
-                      >
-                        <Heart
-                          className={`w-4 h-4 transition-colors ${
-                            track.isFavorite ? 'fill-red-500 text-red-500' : 'opacity-40'
-                          }`}
-                        />
-                      </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleFavorite(track.id);
+                          }}
+                          className="p-1.5 rounded-full hover:bg-black/10 transition active:scale-90"
+                        >
+                          <Heart
+                            className={`w-4 h-4 transition-colors ${
+                              track.isFavorite ? 'fill-red-500 text-red-500' : 'opacity-40'
+                            }`}
+                          />
+                        </button>
 
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActionTrack(track);
-                        }}
-                        className="p-1.5 rounded-full hover:bg-black/10 transition opacity-70 hover:opacity-100 cursor-pointer"
-                        title="Dettagli e opzioni"
-                      >
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
-                    </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActionTrack(track);
+                          }}
+                          className="p-1.5 rounded-full hover:bg-black/10 transition opacity-70 hover:opacity-100 cursor-pointer"
+                          title="Dettagli e opzioni"
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -679,6 +936,28 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
           }
         }}
         onClose={() => setPlaylistToDelete(null)}
+        palette={palette}
+      />
+      {/* Confirmation Dialog: Delete Multiple Selected Tracks */}
+      <ConfirmDialog
+        isOpen={batchConfirmDeleteOpen}
+        title={`Eliminare ${selectedTrackIds.size} ${selectedTrackIds.size === 1 ? 'brano' : 'brani'}?`}
+        description={`Vuoi davvero eliminare ${selectedTrackIds.size} ${selectedTrackIds.size === 1 ? 'brano selezionato' : 'brani selezionati'} dalla libreria locale e dalla coda di riproduzione?`}
+        confirmLabel="Elimina tutti"
+        cancelLabel="Annulla"
+        isDestructive={true}
+        onConfirm={() => {
+          const ids = Array.from(selectedTrackIds);
+          if (onDeleteTracks) {
+            onDeleteTracks(ids);
+          } else {
+            ids.forEach((id) => onDeleteTrack(id));
+          }
+          setSelectedTrackIds(new Set());
+          setIsMultiSelectMode(false);
+          setBatchConfirmDeleteOpen(false);
+        }}
+        onClose={() => setBatchConfirmDeleteOpen(false)}
         palette={palette}
       />
     </div>

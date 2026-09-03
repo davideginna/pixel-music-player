@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Palette,
   Sun,
@@ -9,8 +9,11 @@ import {
   Smartphone,
   RotateCcw,
   Sparkles,
+  Bell,
+  CheckCircle2,
 } from 'lucide-react';
 import { DynamicPalette, EqualizerSettings, ThemeMode } from '../types';
+import { androidBridge } from '../services/androidBridge';
 
 interface SettingsTabProps {
   themeMode: ThemeMode;
@@ -43,6 +46,18 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   onOpenFolderScanner,
   onResetLibrary,
 }) => {
+  const [permissionStatus, setPermissionStatus] = useState<'granted' | 'denied' | 'prompt'>('prompt');
+
+  useEffect(() => {
+    androidBridge.getPermissionStatus().then((status) => {
+      setPermissionStatus(status);
+    });
+  }, []);
+
+  const handleEnableNotifications = async () => {
+    const granted = await androidBridge.initPermissions(true);
+    setPermissionStatus(granted ? 'granted' : 'denied');
+  };
   return (
     <div className="w-full flex-1 overflow-y-auto px-5 pt-3 pb-24 select-none" id="pixel-settings-tab">
       <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mb-5">Impostazioni</h1>
@@ -126,26 +141,52 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         <div className="flex items-center gap-2 mb-3">
           <Smartphone className="w-4 h-4 opacity-75" />
           <h2 className="text-sm font-bold uppercase tracking-wider opacity-80">
-            Controlli di Sistema & Auto
+            Controlli di Sistema & Lockscreen
           </h2>
         </div>
 
         <div
-          className="p-4 rounded-2xl space-y-2 border border-black/5"
+          className="p-4 rounded-2xl space-y-3 border border-black/5"
           style={{ backgroundColor: palette.surfaceContainer }}
         >
           <div className="flex items-center justify-between">
-            <h4 className="text-xs font-bold">Widget Schermata di Blocco (Lockscreen)</h4>
-            <span
-              className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full"
-              style={{ backgroundColor: palette.primaryContainer, color: palette.onPrimaryContainer }}
-            >
-              Attivo OS
-            </span>
+            <div className="flex items-center gap-2">
+              <Bell className="w-4 h-4 opacity-80" />
+              <h4 className="text-xs font-bold">Widget Schermata di Blocco & Notifiche</h4>
+            </div>
+            {permissionStatus === 'granted' ? (
+              <span
+                className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full flex items-center gap-1"
+                style={{ backgroundColor: palette.primaryContainer, color: palette.onPrimaryContainer }}
+              >
+                <CheckCircle2 className="w-3 h-3" />
+                Attivo OS
+              </span>
+            ) : (
+              <span
+                className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-200"
+              >
+                Da Autorizzare
+              </span>
+            )}
           </div>
           <p className="text-[11px] opacity-75 leading-relaxed">
-            Quando blocchi il telefono o spegni lo schermo, il lettore compare automaticamente nella schermata di blocco di Android (con barra a onda, titolo, copertina, tasti avanti/indietro) e nei comandi Bluetooth dell'auto, esattamente come YouTube e VLC.
+            Su Android 13+ il widget multimediale sulla schermata di blocco e nella tendina richiede il permesso notifiche per trasmettere i controlli di riproduzione (onda sonora, traccia e tasti).
           </p>
+
+          {permissionStatus !== 'granted' && (
+            <button
+              onClick={handleEnableNotifications}
+              className="w-full py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+              style={{
+                backgroundColor: palette.primary,
+                color: palette.onPrimary,
+              }}
+            >
+              <Bell className="w-3.5 h-3.5" />
+              Abilita Notifiche & Widget Lockscreen
+            </button>
+          )}
         </div>
       </section>
 

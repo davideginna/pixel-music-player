@@ -15,6 +15,7 @@ import {
   Track,
 } from './types';
 import { audioEngine } from './services/audioEngine';
+import { androidBridge } from './services/androidBridge';
 import { storage } from './services/storage';
 import { extractPaletteFromImageUrl, getEffectivePalette } from './services/dynamicColor';
 import { INITIAL_TRACKS } from './services/sampleLibrary';
@@ -110,6 +111,9 @@ export default function App() {
   // Load saved data on startup
   useEffect(() => {
     async function loadData() {
+      // Initialize Android Notification Channel & Lockscreen permissions
+      androidBridge.initPermissions(false);
+
       const storedTracks = await storage.getTracks();
       if (storedTracks && storedTracks.length > 0) {
         setTracks(storedTracks);
@@ -236,6 +240,7 @@ export default function App() {
   // Select and Play a specific Track
   const handleSelectTrack = useCallback((track: Track) => {
     triggerHaptic();
+    androidBridge.initPermissions(true);
     setCurrentTrackId(track.id);
     // Ensure track is in queue
     if (!queue.includes(track.id)) {
@@ -254,6 +259,7 @@ export default function App() {
     if (e) e.stopPropagation();
     triggerHaptic();
     if (!currentTrack) return;
+    androidBridge.initPermissions(true);
     audioEngine.togglePlay(isPlaying, currentTrack);
   }, [currentTrack, isPlaying, triggerHaptic]);
 

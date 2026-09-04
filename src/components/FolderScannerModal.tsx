@@ -110,9 +110,13 @@ export const FolderScannerModal: React.FC<FolderScannerModalProps> = ({
               ref={singleFileInputRef}
               accept="audio/*,.mp3,.flac,.wav,.m4a,.aac,.ogg,.opus"
               className="hidden"
-              onChange={(e) => {
-                if (e.target.files) handleFiles(e.target.files, 'Brano Singolo');
-                e.target.value = '';
+              onChange={async (e) => {
+                const target = e.target;
+                if (target.files && target.files.length > 0) {
+                  const filesArray = Array.from(target.files);
+                  await handleFiles(filesArray, 'Brano Singolo');
+                }
+                target.value = '';
               }}
             />
 
@@ -123,9 +127,13 @@ export const FolderScannerModal: React.FC<FolderScannerModalProps> = ({
               multiple
               {...{ webkitdirectory: "", directory: "" }}
               className="hidden"
-              onChange={(e) => {
-                if (e.target.files) handleFiles(e.target.files, 'Cartella Musicale');
-                e.target.value = '';
+              onChange={async (e) => {
+                const target = e.target;
+                if (target.files && target.files.length > 0) {
+                  const filesArray = Array.from(target.files);
+                  await handleFiles(filesArray, 'Cartella Musicale');
+                }
+                target.value = '';
               }}
             />
 

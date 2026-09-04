@@ -29,14 +29,14 @@ export async function parseAudioFile(file: File, folderName = 'Musica Locale'): 
   // Read audio duration
   const duration = await getAudioDuration(objectUrl);
 
-  // Generate nice dynamic artwork for this track
-  const coverUrl = generateFallbackCover();
+  // Use the app's logo as the default cover art
+  const coverUrl = './app-icon.svg';
 
   const fileSizeMb = (file.size / (1024 * 1024)).toFixed(1);
   const ext = file.name.split('.').pop()?.toUpperCase() || 'AUDIO';
 
   const newTrack: Track = {
-    id: 'local-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+    id: 'local-' + (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(36).substr(2, 9)),
     title,
     artist,
     album,

@@ -19,9 +19,8 @@ import {
   Info,
   MoreVertical,
 } from 'lucide-react';
-import { DynamicPalette, EqualizerSettings, RepeatMode, Track } from '../types';
+import { DynamicPalette, RepeatMode, Track } from '../types';
 import { QueueDrawer } from './QueueDrawer';
-import { EqualizerModal } from './EqualizerModal';
 import { LyricsDrawer } from './LyricsDrawer';
 import { audioEngine } from '../services/audioEngine';
 
@@ -37,7 +36,6 @@ interface FullPlayerModalProps {
   queue: string[];
   allTracks: Track[];
   palette: DynamicPalette;
-  equalizerSettings: EqualizerSettings;
   audioOutputRoute: 'speaker' | 'pixel_buds' | 'headphones';
   onTogglePlay: () => void;
   onNext: () => void;
@@ -49,7 +47,6 @@ interface FullPlayerModalProps {
   onSelectTrack: (track: Track) => void;
   onRemoveFromQueue: (trackId: string) => void;
   onClearQueue: () => void;
-  onUpdateEqualizer: (settings: EqualizerSettings) => void;
   onChangeAudioOutputRoute: (route: 'speaker' | 'pixel_buds' | 'headphones') => void;
 }
 
@@ -65,7 +62,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
   queue,
   allTracks,
   palette,
-  equalizerSettings,
+  
   audioOutputRoute,
   onTogglePlay,
   onNext,
@@ -77,12 +74,10 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
   onSelectTrack,
   onRemoveFromQueue,
   onClearQueue,
-  onUpdateEqualizer,
+  
   onChangeAudioOutputRoute,
-  onOpenLockscreen,
 }) => {
   const [isQueueOpen, setIsQueueOpen] = useState(false);
-  const [isEqualizerOpen, setIsEqualizerOpen] = useState(false);
   const [isLyricsOpen, setIsLyricsOpen] = useState(false);
   const [isRouteMenuOpen, setIsRouteMenuOpen] = useState(false);
   const [visualizerBars, setVisualizerBars] = useState<number[]>([12, 24, 18, 30, 20, 16, 28, 14]);
@@ -178,16 +173,6 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
           </div>
 
           <div className="flex items-center gap-1">
-            {onOpenLockscreen && (
-              <button
-                onClick={onOpenLockscreen}
-                className="p-2.5 rounded-full hover:bg-black/5 active:scale-95 transition cursor-pointer"
-                title="Schermata di blocco Always-On"
-              >
-                <Lock className="w-5 h-5 opacity-80" />
-              </button>
-            )}
-
             <div className="relative">
               <button
                 onClick={() => setIsRouteMenuOpen(!isRouteMenuOpen)}
@@ -416,18 +401,8 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
             </button>
           </div>
 
-          {/* Auxiliary Row: Equalizer, Lyrics, Queue, Device Output */}
+          {/* Auxiliary Row: Lyrics, Queue, Device Output */}
           <div className="flex items-center justify-around pt-2 border-t border-black/5">
-            <button
-              id="full-player-eq-btn"
-              onClick={() => setIsEqualizerOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold hover:bg-black/5 transition"
-              title="Apri Equalizzatore"
-            >
-              <Sliders className="w-4 h-4 opacity-75" />
-              <span className="hidden sm:inline">EQ</span>
-            </button>
-
             <button
               id="full-player-lyrics-btn"
               onClick={() => setIsLyricsOpen(true)}
@@ -462,14 +437,6 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
           }}
           onRemoveFromQueue={onRemoveFromQueue}
           onClearQueue={onClearQueue}
-          palette={palette}
-        />
-
-        <EqualizerModal
-          isOpen={isEqualizerOpen}
-          onClose={() => setIsEqualizerOpen(false)}
-          settings={equalizerSettings}
-          onUpdateSettings={onUpdateEqualizer}
           palette={palette}
         />
 

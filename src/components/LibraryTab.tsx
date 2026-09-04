@@ -1022,9 +1022,10 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
                     setSelectedTrackIds(new Set(filteredSortedTracks.map((t) => t.id)));
                   }
                 }}
-                className="text-[11px] font-semibold opacity-70 hover:opacity-100 underline cursor-pointer"
+                className="p-2 rounded-full hover:bg-black/10 transition flex items-center justify-center cursor-pointer"
+                title={selectedTrackIds.size === filteredSortedTracks.length ? 'Deseleziona tutti' : 'Seleziona tutti'}
               >
-                {selectedTrackIds.size === filteredSortedTracks.length ? 'Deseleziona' : 'Tutti'}
+                <CheckSquare className="w-4 h-4 opacity-80" />
               </button>
             </div>
 

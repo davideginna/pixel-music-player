@@ -1,5 +1,4 @@
 import { EqualizerSettings, Track } from '../types';
-import { androidBridge } from './androidBridge';
 
 class AudioEngine {
   private audio: HTMLAudioElement | null = null;
@@ -215,11 +214,9 @@ class AudioEngine {
     }
 
     this.setupMediaSession(track);
-    androidBridge.syncPlaybackNotification(track, true);
   }
 
   public pause() {
-    androidBridge.syncPlaybackNotification(this.currentActiveTrack, false);
     if (this.isSynthPlaying) {
       this.stopSynth();
       if (this.onPlayPauseCallback) this.onPlayPauseCallback(false);
@@ -234,7 +231,6 @@ class AudioEngine {
   }
 
   public async resume() {
-    androidBridge.syncPlaybackNotification(this.currentActiveTrack, true);
     if (this.isSynthPlaying && this.currentActiveTrack) {
       this.startProceduralSynth(this.currentActiveTrack);
       if (this.onPlayPauseCallback) this.onPlayPauseCallback(true);

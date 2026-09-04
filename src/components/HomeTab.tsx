@@ -25,14 +25,6 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   onOpenFolderScanner,
   onToggleFavorite,
 }) => {
-  // Time-based greeting
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Buongiorno';
-    if (hour < 18) return 'Buon pomeriggio';
-    return 'Buonasera';
-  };
-
   // Recent tracks (sorted by lastPlayed or fallback)
   const recentTracks = [...tracks]
     .sort((a, b) => (b.lastPlayed || 0) - (a.lastPlayed || 0))
@@ -48,15 +40,10 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
   return (
     <div className="w-full flex-1 overflow-y-auto px-5 pt-3 pb-24 select-none" id="pixel-home-tab">
-      {/* Pixel Header & Greeting */}
-      <div className="flex items-start justify-between mb-4">
+      {/* Pixel Header */}
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-3xl font-medium tracking-tight text-[#1D1B20] dark:text-[#E6E1E5]">
-            {getGreeting()}
-          </h1>
-          <p className="text-[#49454F] dark:text-[#CAC4D0] text-sm mt-1">
-            Tuffati nei tuoi brani preferiti.
-          </p>
+          <h1 className="text-3xl font-extrabold tracking-tight">Home</h1>
         </div>
 
         {/* Quick Shuffle All Button */}

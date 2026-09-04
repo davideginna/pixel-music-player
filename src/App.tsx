@@ -15,12 +15,10 @@ import {
   Track,
 } from './types';
 import { audioEngine } from './services/audioEngine';
-import { androidBridge } from './services/androidBridge';
 import { storage } from './services/storage';
 import { extractPaletteFromImageUrl, getEffectivePalette } from './services/dynamicColor';
 import { INITIAL_TRACKS } from './services/sampleLibrary';
 
-import { AndroidStatusBar } from './components/AndroidStatusBar';
 import { AndroidGestureBar } from './components/AndroidGestureBar';
 import { NavigationBar } from './components/NavigationBar';
 import { MiniPlayer } from './components/MiniPlayer';
@@ -59,16 +57,6 @@ export default function App() {
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => storage.getSettings('theme_mode', 'system'));
   const [paletteId, setPaletteId] = useState<string>(() => storage.getSettings('palette_id', 'geometric_balance'));
   const [extractedPalette, setExtractedPalette] = useState<DynamicPalette | null>(null);
-
-  // Equalizer
-  const [equalizerSettings, setEqualizerSettings] = useState<EqualizerSettings>(() =>
-    storage.getSettings('equalizer', {
-      enabled: true,
-      preset: 'flat',
-      bands: [0, 0, 0, 0, 0],
-      bassBoost: 20,
-    })
-  );
 
   // Pixel Hardware & UX simulation
   const [showPixelFrame, setShowPixelFrame] = useState<boolean>(() => {
@@ -112,7 +100,6 @@ export default function App() {
   useEffect(() => {
     async function loadData() {
       // Initialize Android Notification Channel & Lockscreen permissions
-      androidBridge.initPermissions(false);
 
       const storedTracks = await storage.getTracks();
       if (storedTracks && storedTracks.length > 0) {
@@ -148,12 +135,6 @@ export default function App() {
       if (pal) setExtractedPalette(pal);
     });
   }, [currentTrack, themeMode]);
-
-  // Apply equalizer to AudioEngine whenever settings change
-  useEffect(() => {
-    audioEngine.applyEqualizer(equalizerSettings);
-    storage.saveSettings('equalizer', equalizerSettings);
-  }, [equalizerSettings]);
 
   // Next Track Logic
   const handleNextTrack = useCallback(() => {
@@ -240,7 +221,6 @@ export default function App() {
   // Select and Play a specific Track
   const handleSelectTrack = useCallback((track: Track) => {
     triggerHaptic();
-    androidBridge.initPermissions(true);
     setCurrentTrackId(track.id);
     // Ensure track is in queue
     if (!queue.includes(track.id)) {
@@ -259,7 +239,6 @@ export default function App() {
     if (e) e.stopPropagation();
     triggerHaptic();
     if (!currentTrack) return;
-    androidBridge.initPermissions(true);
     audioEngine.togglePlay(isPlaying, currentTrack);
   }, [currentTrack, isPlaying, triggerHaptic]);
 
@@ -548,12 +527,6 @@ export default function App() {
       onToggleFavorite={handleToggleFavorite}
       onOpenFullPlayer={() => setIsFullPlayerOpen(true)}
     >
-      {/* Edge-to-Edge Android 13+ Status Bar */}
-      <AndroidStatusBar
-        palette={activePalette}
-        isPlaying={isPlaying}
-      />
-
       {/* Main Tab View */}
       <main className="flex-1 flex flex-col overflow-hidden relative">
         {currentTab === 'home' && (
@@ -616,14 +589,12 @@ export default function App() {
             palette={activePalette}
             showPixelFrame={showPixelFrame}
             hapticsEnabled={hapticsEnabled}
-            equalizerSettings={equalizerSettings}
             tracksCount={tracks.length}
             totalSizeMb={totalSizeMb}
             onChangeThemeMode={handleChangeThemeMode}
             onChangePaletteId={handleChangePaletteId}
             onTogglePixelFrame={() => setShowPixelFrame(!showPixelFrame)}
             onToggleHaptics={() => setHapticsEnabled(!hapticsEnabled)}
-            onOpenEqualizer={() => setIsFullPlayerOpen(true)}
             onOpenFolderScanner={() => setIsFolderScannerOpen(true)}
             onResetLibrary={() => setIsResetConfirmOpen(true)}
           />
@@ -687,7 +658,6 @@ export default function App() {
         queue={queue}
         allTracks={tracks}
         palette={activePalette}
-        equalizerSettings={equalizerSettings}
         audioOutputRoute={audioOutputRoute}
         onTogglePlay={handleTogglePlay}
         onNext={handleNextTrack}
@@ -705,7 +675,6 @@ export default function App() {
         onSelectTrack={handleSelectTrack}
         onRemoveFromQueue={handleRemoveFromQueue}
         onClearQueue={handleClearQueue}
-        onUpdateEqualizer={setEqualizerSettings}
         onChangeAudioOutputRoute={setAudioOutputRoute}
       />
 

@@ -650,24 +650,33 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Material 3 Bottom Navigation Bar */}
-      <NavigationBar
-        currentTab={currentTab}
-        onTabChange={(tab) => {
-          triggerHaptic();
-          setCurrentTab(tab);
+      {/* Bottom Navigation Area */}
+      <div 
+        className="flex flex-col shrink-0" 
+        style={{ 
+          backgroundColor: activePalette.surfaceContainer,
+          paddingBottom: 'env(safe-area-inset-bottom, 8px)'
         }}
-        palette={activePalette}
-      />
+      >
+        {/* Material 3 Bottom Navigation Bar */}
+        <NavigationBar
+          currentTab={currentTab}
+          onTabChange={(tab) => {
+            triggerHaptic();
+            setCurrentTab(tab);
+          }}
+          palette={activePalette}
+        />
 
-      {/* Android 13+ Gesture Navigation Pill */}
-      <AndroidGestureBar
-        palette={activePalette}
-        onHomeClick={() => {
-          triggerHaptic();
-          setCurrentTab('home');
-        }}
-      />
+        {/* Android 13+ Gesture Navigation Pill */}
+        <AndroidGestureBar
+          palette={activePalette}
+          onHomeClick={() => {
+            triggerHaptic();
+            setCurrentTab('home');
+          }}
+        />
+      </div>
 
       {/* Modals and Drawers */}
 

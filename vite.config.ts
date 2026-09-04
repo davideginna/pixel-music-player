@@ -20,6 +20,7 @@ export default defineConfig(() => {
           theme_color: '#121316',
           background_color: '#121316',
           display: 'standalone',
+          start_url: '.',
           icons: [
             {
               src: 'app-icon.svg',

@@ -203,7 +203,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       <section className="p-5 rounded-3xl border border-black/5 text-xs space-y-3" style={{ backgroundColor: palette.surfaceContainer }}>
         <div className="flex items-center gap-3.5 pb-2 border-b border-black/5">
           <img
-            src="/app-icon.svg"
+            src="./app-icon.svg"
             alt="Pixel Music Icon"
             className="w-14 h-14 rounded-2xl shadow-sm border border-black/5 shrink-0"
           />
@@ -217,10 +217,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
           <div className="flex items-center justify-between">
             <span className="font-semibold">Versione:</span>
             <span className="font-bold">2.4.0 (Material 3)</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="font-semibold">Tema Dinamico:</span>
-            <span className="font-semibold text-blue-500">Gemini Aurora</span>
           </div>
         </div>
       </section>

@@ -24,9 +24,8 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   return (
     <nav
       id="pixel-bottom-navigation"
-      className="w-full h-16 flex items-center justify-around px-2 select-none border-t border-[#CAC4D0]/60 transition-colors duration-300 shrink-0"
+      className="w-full h-16 flex items-center justify-around px-2 select-none border-t border-[#CAC4D0]/60 transition-colors duration-300 shrink-0 bg-transparent"
       style={{
-        backgroundColor: palette.surfaceContainer,
         color: palette.onSurfaceVariant,
       }}
     >

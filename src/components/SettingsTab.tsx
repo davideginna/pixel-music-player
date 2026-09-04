@@ -18,14 +18,10 @@ interface SettingsTabProps {
   themeMode: ThemeMode;
   paletteId: string;
   palette: DynamicPalette;
-  showPixelFrame: boolean;
-  hapticsEnabled: boolean;
   tracksCount: number;
   totalSizeMb: string;
   onChangeThemeMode: (mode: ThemeMode) => void;
   onChangePaletteId: (id: string) => void;
-  onTogglePixelFrame: () => void;
-  onToggleHaptics: () => void;
   onOpenFolderScanner: () => void;
   onResetLibrary: () => void;
 }
@@ -34,14 +30,10 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   themeMode,
   paletteId,
   palette,
-  showPixelFrame,
-  hapticsEnabled,
   tracksCount,
   totalSizeMb,
   onChangeThemeMode,
   onChangePaletteId,
-  onTogglePixelFrame,
-  onToggleHaptics,
   onOpenFolderScanner,
   onResetLibrary,
 }) => {
@@ -123,37 +115,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         </div>
       </section>
 
-      {/* SECTION: INTEGRAZIONE SISTEMA ANDROID & BLUETOOTH */}
-      <section className="mb-7">
-        <div className="flex items-center gap-2 mb-3">
-          <Smartphone className="w-4 h-4 opacity-75" />
-          <h2 className="text-sm font-bold uppercase tracking-wider opacity-80">
-            Controlli di Sistema & Lockscreen
-          </h2>
-        </div>
 
-        <div
-          className="p-4 rounded-2xl space-y-3 border border-black/5"
-          style={{ backgroundColor: palette.surfaceContainer }}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Smartphone className="w-4 h-4 opacity-80" />
-              <h4 className="text-xs font-bold">Integrazione di Sistema</h4>
-            </div>
-            <span
-              className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full flex items-center gap-1"
-              style={{ backgroundColor: palette.primaryContainer, color: palette.onPrimaryContainer }}
-            >
-              <CheckCircle2 className="w-3 h-3" />
-              Attivo
-            </span>
-          </div>
-          <p className="text-[11px] opacity-75 leading-relaxed">
-            I controlli multimediali sono automaticamente integrati con la schermata di blocco, i dispositivi Bluetooth e il centro di controllo del tuo dispositivo.
-          </p>
-        </div>
-      </section>
 
       {/* SECTION: MEMORIA & SCANSIONE LOCALE */}
       <section className="mb-7">
@@ -192,50 +154,16 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
 
             <button
               onClick={onResetLibrary}
-              className="w-full py-2 px-4 rounded-xl text-xs font-semibold hover:bg-black/5 opacity-75 hover:opacity-100 flex items-center justify-center gap-2 transition"
+              className="w-full py-2 px-4 rounded-xl text-xs font-semibold hover:bg-black/5 opacity-75 hover:opacity-100 flex items-center justify-center gap-2 transition text-red-600 hover:text-red-700 hover:bg-red-500/10"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>Ripristina brani originali Pixel</span>
+              <span>Svuota l'intera libreria</span>
             </button>
           </div>
         </div>
       </section>
 
-      {/* SECTION: PIXEL EXPERIENCE */}
-      <section className="mb-7">
-        <div className="flex items-center gap-2 mb-3">
-          <Smartphone className="w-4 h-4 opacity-75" />
-          <h2 className="text-sm font-bold uppercase tracking-wider opacity-80">
-            Esperienza Google Pixel
-          </h2>
-        </div>
 
-        <div
-          className="p-4 rounded-2xl space-y-4 border border-black/5"
-          style={{ backgroundColor: palette.surfaceContainer }}
-        >
-          {/* Toggle Haptics */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="text-xs font-bold">Feedback tattile Pixel</h4>
-              <p className="text-[11px] opacity-70">Vibrazione e clic tattile sui controlli</p>
-            </div>
-            <button
-              onClick={onToggleHaptics}
-              className={`w-11 h-6 rounded-full transition-colors relative p-1 cursor-pointer flex items-center ${
-                hapticsEnabled ? 'bg-current' : 'bg-neutral-600'
-              }`}
-              style={{ color: hapticsEnabled ? palette.primary : undefined }}
-            >
-              <div
-                className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
-                  hapticsEnabled ? 'translate-x-5' : 'translate-x-0'
-                }`}
-              />
-            </button>
-          </div>
-        </div>
-      </section>
 
       {/* SECTION: INFO APP CON ICONA GOOGLE PIXEL BUDS */}
       <section className="p-5 rounded-3xl border border-black/5 text-xs space-y-3" style={{ backgroundColor: palette.surfaceContainer }}>
@@ -247,7 +175,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
           />
           <div>
             <h3 className="text-sm font-bold">Pixel Music Player</h3>
-            <p className="text-[11px] opacity-75">Icona Pixel Buds &bull; Material You Google</p>
+            <p className="text-[11px] opacity-75">Material You Design</p>
           </div>
         </div>
 
@@ -259,14 +187,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
           <div className="flex items-center justify-between">
             <span className="font-semibold">Tema Dinamico:</span>
             <span className="font-semibold text-blue-500">Gemini Aurora</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="font-semibold">Package Android:</span>
-            <span className="font-mono">com.pixel.musicplayer</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="font-semibold">Controlli Lockscreen:</span>
-            <span className="text-emerald-500 font-bold">Attivo OS & Bluetooth</span>
           </div>
         </div>
       </section>

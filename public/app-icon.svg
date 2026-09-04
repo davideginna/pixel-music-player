@@ -1,28 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
-    <linearGradient id="gradLeft" x1="0" y1="80" x2="0" y2="450" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#3A82F7" />
-      <stop offset="100%" stop-color="#1962D2" />
+    <linearGradient id="gradLeft" x1="0" y1="80" x2="0" y2="460" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFEA4C" />
+      <stop offset="100%" stop-color="#64D01E" />
     </linearGradient>
-    <linearGradient id="gradMid" x1="0" y1="140" x2="0" y2="380" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#A584FF" />
-      <stop offset="100%" stop-color="#6DA1FF" />
-    </linearGradient>
-    <linearGradient id="gradRight" x1="0" y1="200" x2="0" y2="330" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#B1DBFF" />
-      <stop offset="100%" stop-color="#9BC8FF" />
+    <linearGradient id="gradRight" x1="0" y1="120" x2="0" y2="300" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#F39C7A" />
+      <stop offset="100%" stop-color="#73D126" />
     </linearGradient>
   </defs>
   
-  <g transform="translate(-10, 0)">
-    <!-- Left Shape (Circle + Stem) -->
-    <circle cx="200" cy="340" r="110" fill="url(#gradLeft)" />
-    <rect x="230" y="80" width="80" height="300" rx="40" fill="url(#gradLeft)" />
-    
-    <!-- Middle Shape -->
-    <rect x="330" y="140" width="75" height="240" rx="37.5" fill="url(#gradMid)" />
-    
-    <!-- Right Shape -->
-    <rect x="425" y="200" width="60" height="130" rx="30" fill="url(#gradRight)" />
+  <g transform="translate(6, -14)">
+    <circle cx="190" cy="360" r="100" fill="url(#gradLeft)" />
+    <rect x="190" y="80" width="100" height="280" rx="50" fill="url(#gradLeft)" />
+    <rect x="320" y="120" width="90" height="180" rx="45" fill="url(#gradRight)" />
   </g>
 </svg>

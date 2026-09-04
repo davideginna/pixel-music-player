@@ -1,5 +1,4 @@
 import { EqualizerSettings, Playlist, ThemeMode, Track } from '../types';
-import { INITIAL_TRACKS } from './sampleLibrary';
 
 const DB_NAME = 'pixel_music_db';
 const DB_VERSION = 1;
@@ -50,9 +49,8 @@ class StorageService {
           const hasSeeded = localStorage.getItem('pixel_music_tracks_seeded');
           if ((!result || result.length === 0) && !hasSeeded) {
             // First time launch: seed initial tracks
-            this.saveTracks(INITIAL_TRACKS);
             localStorage.setItem('pixel_music_tracks_seeded', 'true');
-            resolve(INITIAL_TRACKS);
+            resolve([]);
           } else {
             localStorage.setItem('pixel_music_tracks_seeded', 'true');
             const processed = (result || []).map((t) => {
@@ -68,10 +66,10 @@ class StorageService {
             resolve(processed);
           }
         };
-        req.onerror = () => resolve(INITIAL_TRACKS);
+        req.onerror = () => resolve([]);
       });
     } catch {
-      return INITIAL_TRACKS;
+      return [];
     }
   }
 
@@ -136,26 +134,7 @@ class StorageService {
   }
 
   public async getPlaylists(): Promise<Playlist[]> {
-    const defaultPlaylists: Playlist[] = [
-      {
-        id: 'pl-favorites',
-        title: 'I tuoi Preferiti',
-        description: 'Tutti i brani a cui hai lasciato un cuore',
-        coverUrl: INITIAL_TRACKS[0].coverUrl,
-        trackIds: ['track-1', 'track-2', 'track-4', 'track-5'],
-        createdAt: Date.now() - 86400000 * 10,
-        updatedAt: Date.now(),
-      },
-      {
-        id: 'pl-pixel-chill',
-        title: 'Pixel Focus & Chill',
-        description: 'Musica lo-fi ed elettronica per concentrarsi',
-        coverUrl: INITIAL_TRACKS[1].coverUrl,
-        trackIds: ['track-1', 'track-2', 'track-6'],
-        createdAt: Date.now() - 86400000 * 5,
-        updatedAt: Date.now(),
-      },
-    ];
+    const defaultPlaylists: Playlist[] = [];
 
     try {
       const db = await this.openDB();

@@ -17,7 +17,6 @@ import {
 import { audioEngine } from './services/audioEngine';
 import { storage } from './services/storage';
 import { extractPaletteFromImageUrl, getEffectivePalette } from './services/dynamicColor';
-import { INITIAL_TRACKS } from './services/sampleLibrary';
 
 import { AndroidGestureBar } from './components/AndroidGestureBar';
 import { NavigationBar } from './components/NavigationBar';
@@ -36,7 +35,7 @@ import { Toast, ToastData } from './components/Toast';
 
 export default function App() {
   // Persistence state
-  const [tracks, setTracks] = useState<Track[]>(INITIAL_TRACKS);
+  const [tracks, setTracks] = useState<Track[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [currentTab, setCurrentTab] = useState<NavigationTab>('home');
   const [toast, setToast] = useState<ToastData | null>(null);
@@ -49,8 +48,8 @@ export default function App() {
   const [volume, setVolume] = useState(1);
   const [isShuffle, setIsShuffle] = useState(false);
   const [repeatMode, setRepeatMode] = useState<RepeatMode>('off');
-  const [currentTrackId, setCurrentTrackId] = useState<string | null>('track-1');
-  const [queue, setQueue] = useState<string[]>(INITIAL_TRACKS.map((t) => t.id));
+  const [currentTrackId, setCurrentTrackId] = useState<string | null>(null);
+  const [queue, setQueue] = useState<string[]>([]);
   const [audioOutputRoute, setAudioOutputRoute] = useState<'speaker' | 'pixel_buds' | 'headphones'>('pixel_buds');
 
   // Theme & Appearance
@@ -469,14 +468,14 @@ export default function App() {
   const handleConfirmResetLibrary = useCallback(() => {
     localStorage.removeItem('pixel_music_tracks_seeded');
     localStorage.removeItem('pixel_music_playlists_seeded');
-    storage.saveTracks(INITIAL_TRACKS);
-    setTracks(INITIAL_TRACKS);
-    setQueue(INITIAL_TRACKS.map((t) => t.id));
-    setCurrentTrackId(INITIAL_TRACKS[0].id);
-    audioEngine.playTrack(INITIAL_TRACKS[0], 0);
-    setIsPlaying(true);
+    storage.saveTracks([]);
+    setTracks([]);
+    setQueue([]);
+    setCurrentTrackId(null);
+    audioEngine.pause();
+    setIsPlaying(false);
     setToast({
-      message: 'Libreria musicale ripristinata ai valori iniziali',
+      message: 'Libreria musicale svuotata completamente',
     });
   }, []);
 
@@ -712,12 +711,12 @@ export default function App() {
         palette={activePalette}
       />
 
-      {/* 6. Confirm Dialog: Reset Library */}
+      {/* 6. Confirm Dialog: Clear Library */}
       <ConfirmDialog
         isOpen={isResetConfirmOpen}
-        title="Ripristinare libreria?"
-        description="Vuoi ripristinare la libreria iniziale di brani demo Pixel? Tutti i file importati e le playlist create manualmente verranno rimossi."
-        confirmLabel="Ripristina"
+        title="Svuota libreria?"
+        description="Vuoi svuotare completamente la libreria musicale? Tutti i file importati e le playlist create manualmente verranno rimossi e la cache eliminata."
+        confirmLabel="Svuota"
         cancelLabel="Annulla"
         isDestructive={true}
         onConfirm={() => {

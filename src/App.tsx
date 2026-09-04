@@ -32,8 +32,11 @@ import { PlaylistModal } from './components/PlaylistModal';
 import { PixelDeviceFrame } from './components/PixelDeviceFrame';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { Toast, ToastData } from './components/Toast';
+import { usePWAInstall } from './hooks/usePWAInstall';
 
 export default function App() {
+  const { isInstallable, showBanner, promptInstall, dismissBanner } = usePWAInstall();
+
   // Persistence state
   const [tracks, setTracks] = useState<Track[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
@@ -528,6 +531,32 @@ export default function App() {
     >
       {/* Main Tab View */}
       <main className="flex-1 flex flex-col overflow-hidden relative">
+        {showBanner && (
+          <div className="absolute top-4 left-4 right-4 z-50 p-4 rounded-2xl shadow-xl flex items-center justify-between animate-in fade-in slide-in-from-top-4"
+               style={{ backgroundColor: activePalette.primaryContainer, color: activePalette.onPrimaryContainer }}>
+            <div className="flex-1">
+              <h4 className="text-sm font-bold mb-0.5">Installa l'App</h4>
+              <p className="text-xs opacity-90">Aggiungi alla home per l'uso offline</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={dismissBanner}
+                className="p-2 rounded-full hover:bg-black/10 transition"
+              >
+                <span className="sr-only">Chiudi</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </button>
+              <button 
+                onClick={promptInstall}
+                className="px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm"
+                style={{ backgroundColor: activePalette.primary, color: activePalette.onPrimary }}
+              >
+                Installa
+              </button>
+            </div>
+          </div>
+        )}
+
         {currentTab === 'home' && (
           <HomeTab
             tracks={tracks}
@@ -586,14 +615,12 @@ export default function App() {
             themeMode={themeMode}
             paletteId={paletteId}
             palette={activePalette}
-            showPixelFrame={showPixelFrame}
-            hapticsEnabled={hapticsEnabled}
             tracksCount={tracks.length}
             totalSizeMb={totalSizeMb}
+            isInstallable={isInstallable}
+            onInstallPWA={promptInstall}
             onChangeThemeMode={handleChangeThemeMode}
             onChangePaletteId={handleChangePaletteId}
-            onTogglePixelFrame={() => setShowPixelFrame(!showPixelFrame)}
-            onToggleHaptics={() => setHapticsEnabled(!hapticsEnabled)}
             onOpenFolderScanner={() => setIsFolderScannerOpen(true)}
             onResetLibrary={() => setIsResetConfirmOpen(true)}
           />

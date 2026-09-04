@@ -20,6 +20,8 @@ interface SettingsTabProps {
   palette: DynamicPalette;
   tracksCount: number;
   totalSizeMb: string;
+  isInstallable: boolean;
+  onInstallPWA: () => void;
   onChangeThemeMode: (mode: ThemeMode) => void;
   onChangePaletteId: (id: string) => void;
   onOpenFolderScanner: () => void;
@@ -32,6 +34,8 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   palette,
   tracksCount,
   totalSizeMb,
+  isInstallable,
+  onInstallPWA,
   onChangeThemeMode,
   onChangePaletteId,
   onOpenFolderScanner,
@@ -163,6 +167,36 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         </div>
       </section>
 
+      {/* SECTION: INSTALLAZIONE APP */}
+      {isInstallable && (
+        <section className="mb-7">
+          <div className="flex items-center gap-2 mb-3">
+            <Smartphone className="w-4 h-4 opacity-75" />
+            <h2 className="text-sm font-bold uppercase tracking-wider opacity-80">
+              Installazione App
+            </h2>
+          </div>
+          <div
+            className="p-4 rounded-2xl space-y-3 border border-black/5"
+            style={{ backgroundColor: palette.surfaceContainer }}
+          >
+            <p className="text-[11px] opacity-75 leading-relaxed">
+              Installa Pixel Music Player sul tuo dispositivo per un'esperienza nativa a tutto schermo, prestazioni migliori e utilizzo offline.
+            </p>
+            <button
+              onClick={onInstallPWA}
+              className="w-full py-2.5 px-4 rounded-xl text-xs font-bold shadow-sm flex items-center justify-center gap-2 transition active:scale-95"
+              style={{
+                backgroundColor: palette.primary,
+                color: palette.onPrimary,
+              }}
+            >
+              <Smartphone className="w-4 h-4" />
+              <span>Installa App</span>
+            </button>
+          </div>
+        </section>
+      )}
 
 
       {/* SECTION: INFO APP CON ICONA GOOGLE PIXEL BUDS */}

@@ -1,5 +1,26 @@
 import { Track } from '../types';
 
+export function generateFallbackCover(): string {
+  const svg = `
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+    <rect width="400" height="400" rx="36" fill="#F1F3F4"/>
+    <circle cx="200" cy="200" r="140" fill="#E8EAED"/>
+    
+    <g transform="translate(100, 80) scale(1.3)">
+      <!-- Red Beam -->
+      <path d="M 50 10 C 120 -10, 150 20, 150 60 C 130 10, 80 10, 50 30 Z" fill="#EA4335" />
+      <!-- Yellow circle in beam -->
+      <circle cx="130" cy="35" r="15" fill="#FBBC04" />
+      <!-- Green Stem -->
+      <rect x="50" y="15" width="24" height="130" rx="12" fill="#34A853" />
+      <!-- Blue Note Head -->
+      <circle cx="38" cy="140" r="38" fill="#4285F4" />
+    </g>
+  </svg>
+  `;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
 export function generatePixelArtwork(title: string, color1: string, color2: string, color3: string): string {
   const svg = `
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">

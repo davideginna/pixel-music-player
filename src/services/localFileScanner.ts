@@ -1,5 +1,5 @@
 import { Track } from '../types';
-import { generatePixelArtwork } from './sampleLibrary';
+import { generateFallbackCover } from './sampleLibrary';
 
 export async function parseAudioFile(file: File, folderName = 'Musica Locale'): Promise<Track> {
   const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
@@ -30,12 +30,7 @@ export async function parseAudioFile(file: File, folderName = 'Musica Locale'): 
   const duration = await getAudioDuration(objectUrl);
 
   // Generate nice dynamic artwork for this track
-  const coverUrl = generatePixelArtwork(
-    title.substring(0, 16),
-    '#3F88C5',
-    '#6B7A6A',
-    '#90425D'
-  );
+  const coverUrl = generateFallbackCover();
 
   const fileSizeMb = (file.size / (1024 * 1024)).toFixed(1);
   const ext = file.name.split('.').pop()?.toUpperCase() || 'AUDIO';
